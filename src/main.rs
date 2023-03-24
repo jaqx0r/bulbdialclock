@@ -625,9 +625,8 @@ void DecrAlignVal (void)
   }
 }
 
-             
-void setup()  // run once, when the sketch starts
-{
+#[arduino_hal::entry]             
+fn main() -> ! {
   Serial.begin(19200);
   setTime(0);
 
@@ -703,11 +702,10 @@ void setup()  // run once, when the sketch starts
   if (ExtRTC)  // If time is already set from the RTC...
     VCRmode = 0;
 
-}  // End Setup
 
 
 
-void loop()
+loop
 {
   byte HighLine, LowLine;
   byte PINDcopy;
@@ -1453,4 +1451,5 @@ const StartOptTimeLimit: u8 = 30;
       }
     }
   }
+}
 }
