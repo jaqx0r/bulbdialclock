@@ -253,54 +253,56 @@ const HrHi: [u8: 12]  = [
 const HrLo: [u8: 12]  = [
   1,10,10, 2, 6,10,10, 3, 4,10,10, 5];
 
-static mut SecNow: u8;
-static mut MinNow: u8;
-static mut HrNow: u8;
+static mut SecNow: u8 = 0;
+static mut MinNow: u8 = 0;
+static mut HrNow: u8 = 0;
 static mut HrDisp: u8;
-static mut MinDisp: u8;
-static mut SecDisp: u8;
+static mut MinDisp: u8 = 0;
+static mut SecDisp: u8 = 0;
 
 const EELength: u8 = 7;
 static mut EEvalues: [u8: EELength];
 
 // Variables to store brightness of the three LED rings.
-static mut HourBright: u8;
-static mut MinBright: u8;
-static mut SecBright:u8;
-static mut MainBright:u8;
+static mut HourBright: u8 = 30;
+static mut MinBright: u8 =63;
+static mut SecBright:u8 = 63;
+static mut MainBright:u8 = 8; // 8 is maximum value.
 
 static mut LastTime: u32;
 static mut TimeNow: u32;
-static mut TimeSinceButton: u8;
+static mut TimeSinceButton: u8 = 0;
 static mut LastSavedBrightness: u8;
 
 static mut PINDLast: u8;
 
 // Modes:
-static mut CCW: u8;
-static mut ExtRTC: u8;
-static mut SleepMode: u8;
-static mut FadeMode: u8;
+static mut CCW: u8 = 0 // presume clockwise, not counterclockwise
+static mut ExtRTC: u8 = 0;
+static mut SleepMode: u8 = 0;
+static mut FadeMode: u8 = 1; // Presume fading is enabled.
 
-static mut VCRmode: u8;  // In VCR mode, the clock blinks at you because the time hasn't been set yet.
-static mut FactoryResetDisable: u8;  // To make sure that we don't accidentally reset the settings...
+static mut VCRmode: u8 = 1;  // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
+static mut FactoryResetDisable: u8 = 0;  // To make sure that we don't accidentally reset the settings...
 
-static mut SettingTime: u8;
-static mut AlignMode: u8;
-static mut OptionMode: u8;
-static mut AlignValue: u8;
-static mut AlignRate: i8;
+static mut SettingTime: u8 = 0; // Normally 0.
+  // 1: hours, 2: minutes, 3: seconds, 4: not setting time
 
-static mut AlignLoopCount: u8;
-static mut StartingOption: u8;
+static mut AlignMode: u8 = 0; // Normally 0.
+static mut OptionMode: u8 = 0; // NOrmally 0
+static mut AlignValue: u8 = 0;
+static mut AlignRate: i8 = 2;
 
-static mut HoldTimeSet: u8;
-static mut HoldOption: u8;
-static mut HoldAlign: u8;
+static mut AlignLoopCount: u8 = 0;
+static mut StartingOption: u8 = 0;
 
-static mut MomentaryOverridePlus: u8;
-static mut MomentaryOverrideMinus: u8;
-static mut MomentaryOverrideZ: u8;
+static mut HoldTimeSet: u8 = 0;
+static mut HoldOption: u8 = 0;
+static mut HoldAlign: u8 = 0;
+
+static mut MomentaryOverridePlus: u8 = 0;
+static mut MomentaryOverrideMinus: u8 = 0;
+static mut MomentaryOverrideZ: u8 = 0;
 
 static mut prevtime: u32;
 static mut millisCopy: u32;
@@ -640,49 +642,13 @@ fn main() -> ! {
 
   PORTD = buttonmask;  // Pull-up resistors for buttons
 
-  SecNow = 0;
-  HrNow = 0;
-  MinNow = 0;
   TimeNow = millis();
-  SecDisp = 0;
-  MinDisp = 0;
 
   EEReadSettings();
-
-  /*
-   MainBright = 8;  // 8 is maximum value.
-   HourBright = 30;
-   MinBright = 63;
-   SecBright = 63;
-   CCW = 0;  // presume clockwise, not counterclockwise.
-   FadeMode = 1;  // Presume fading is enabled.
-   */
-
-  VCRmode = 1;  // Time is NOT yet set.
-  FactoryResetDisable = 0;
-  TimeSinceButton = 0;
 
   PINDLast =  PIND & buttonmask;
   // ButtonHold = 0;
 
-  HoldTimeSet = 0;
-  HoldOption = 0;
-  HoldAlign = 0;
-  MomentaryOverridePlus = 0;
-  MomentaryOverrideMinus = 0;
-  MomentaryOverrideZ = 0;
-
-  SleepMode = 0;
-
-  SettingTime = 0;  // Normally 0.
-  // 1: hours, 2: minutes, 3: seconds, 4: not setting time
-
-  AlignMode  = 0;  // Normally 0.
-  OptionMode  = 0;  // Normally 0.
-  AlignValue = 0;
-  AlignRate = 2;
-  AlignLoopCount = 0;
-  StartingOption = 0;
 
   Wire.begin();
 
@@ -692,8 +658,6 @@ fn main() -> ! {
 
    RTCsetTime(2,52,45);
    */
-
-  ExtRTC = 0;
 
   // Check if RTC is available, and use it to set the time if so.
   ExtRTC = RTCgetTime();
