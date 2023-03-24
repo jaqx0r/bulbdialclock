@@ -334,7 +334,7 @@ static mut SecFade1: u8;
 static mut SecFade2: u8;
 
 
-void ApplyDefaults (void) {
+fn ApplyDefaults () {
   /*
    * Brightness setting (range: 1-8)  Default: 8  (Fully bright)
    * Red brightness  (range: 0-63)    Default: 20
@@ -354,7 +354,7 @@ void ApplyDefaults (void) {
 }
 
 
-void EEReadSettings (void) {  // TODO: Detect ANY bad values, not just 255.
+fn EEReadSettings () {  // TODO: Detect ANY bad values, not just 255.
 
   byte detectBad = 0;
   byte value = 255;
@@ -406,7 +406,7 @@ void EEReadSettings (void) {  // TODO: Detect ANY bad values, not just 255.
 
 }
 
-void EESaveSettings (void){
+fn EESaveSettings (){
   //EEPROM.write(Addr, Value);
 
   // Careful if you use  this function: EEPROM has a limited number of write
@@ -428,7 +428,7 @@ void EESaveSettings (void){
 }
 
 
-void normalTimeDisplay(void) {
+fn normalTimeDisplay() {
 
   SecDisp = (SecNow + 30);  // Offset by 30 s to project *shadow* in the right place.
   if ( SecDisp > 59)
@@ -460,7 +460,7 @@ void normalTimeDisplay(void) {
 }
 
 
-void normalFades(void) {
+fn normalFades() {
 
   if (FadeMode){
     // Normal time display
@@ -495,7 +495,7 @@ void normalFades(void) {
 }
 
 
-void RTCsetTime(byte hourIn, byte minuteIn, byte secondIn)
+fn RTCsetTime(byte hourIn, byte minuteIn, byte secondIn)
 {
   Wire.beginTransmission(104);  // 104 is DS3231 device address
   Wire.write((byte)0);  // start at register 0
@@ -522,7 +522,7 @@ void RTCsetTime(byte hourIn, byte minuteIn, byte secondIn)
 
 }
 
-byte RTCgetTime()
+fn RTCgetTime() -> u8
 { // Read out time from RTC module, if present
   // send request to receive data starting at register 0
 
@@ -594,7 +594,7 @@ byte RTCgetTime()
 }
 
 
-void IncrAlignVal (void)
+fn IncrAlignVal ()
 {
   AlignValue++;
 
@@ -611,7 +611,7 @@ void IncrAlignVal (void)
 }
 
 
-void DecrAlignVal (void)
+fn DecrAlignVal ()
 {
   if (AlignValue > 0)
     AlignValue--;
