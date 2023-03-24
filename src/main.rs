@@ -1,31 +1,31 @@
 /*
  BulbdialClock.ino
- 
+
  Default software for the Bulbdial Clock kit designed by
  Evil Mad Scientist Laboratories: http://www.evilmadscientist.com/go/bulbdialkit
- 
+
  Updated to work with Arduino 1.0 by Ray Ramirez
  Also requires Time library:  http://www.arduino.cc/playground/Code/Time
- 
+
  Target: ATmega168, clock at 16 MHz.
- 
+
  Version 1.0.1 - 1/14/2012
  Copyright (c) 2009 Windell H. Oskay.  All right reserved.
  http://www.evilmadscientist.com/
- 
+
  This library is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
- 
+
  This library is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with this library.  If not, see <http://www.gnu.org/licenses/>.
- 
+
  */
 
 #![no_std]
@@ -34,21 +34,21 @@
 #![allow(non_upper_case_globals,
          non_camel_case_types,
          non_snake_case)]
-         
+
 /*
  EEPROM variables that are saved:  7
- 
+
  * Brightness setting (range: 1-8)  Default: 8   (Fully bright)
- 
+
  * Red brightness  (range: 0-63)    Default: 20
  * Green brightness (range: 0-63)   Default: 63
  * Blue brightness (range: 0-63)    Default: 63
- 
+
  * Time direction (Range: 0,1)      Default: 0  (Clockwise)
  * Fade style (Range: 0,1)         Default: 1  (Fade enabled)
- 
+
  * Alignment mode                  Default: 0
- 
+
  */
 
 // "Factory" default configuration can be configured here:
@@ -658,7 +658,7 @@ void setup()  // run once, when the sketch starts
   /*
    // HIGHLY OPTIONAL: Set jardcoded RTC Time from within the program.
    // Example: Set time to 2:52:45.
-   
+
    RTCsetTime(2,52,45);
    */
 
