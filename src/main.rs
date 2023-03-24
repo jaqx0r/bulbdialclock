@@ -28,10 +28,13 @@
  
  */
 
-#include <EEPROM.h>            // For saving settings
-#include <Wire.h>              // For optional RTC module
-#include <Time.h>              // For optional Serial Sync
+#![no_std]
+#![no_main]
 
+#![allow(non_upper_case_globals,
+         non_camel_case_types,
+         non_snake_case)]
+         
 /*
  EEPROM variables that are saved:  7
  
@@ -49,36 +52,36 @@
  */
 
 // "Factory" default configuration can be configured here:
-#define MainBrightDefault 8
+const MainBrightDefault: u8 = 8;
 
-#define RedBrightDefault 63  // Use 63, default, for kits with monochrome LEDs!
-#define GreenBrightDefault 63
-#define BlueBrightDefault 63
+const RedBrightDefault: u8 = 63;  // Use 63, default, for kits with monochrome LEDs!
+const GreenBrightDefault: u8 = 63;
+const BlueBrightDefault: u8 = 63;
 
-#define CCWDefault 0
-#define FadeModeDefault 1
+const CCWDefault: u8 = 0;
+const FadeModeDefault: u8 = 1;
 
-#define AlignModeDefault 0
+const AlignModeDefault: u8 = 0;
 
-#define TIME_MSG_LEN 11  // time sync to PC is HEADER followed by unix time_t as ten ascii digits
-#define TIME_HEADER 255  // Header tag for serial time sync message
+const TIME_MSG_LEN: usize = 11;  // time sync to PC is HEADER followed by unix time_t as ten ascii digits
+const TIME_HEADER: u8 = 255;  // Header tag for serial time sync message
 
 // The buttons are located at D5, D6, & D7.
-#define buttonmask 224
+const buttonmask: u8 = 224;
 
 // LED outputs B0-B2:
-#define LEDsB 7
+const LEDsB: u8 = 7;
 
 // C0-C3 are LED outputs:
-#define LEDsC 15
+const LEDsC: u8 = 15;
 
 // TX, PD2,PD3,PD4 are LED outputs.
-#define LEDsD 28
+const LEDsD: u8 = 28;
 
 // Negative masks of those LED positions, for quick turn-off:
-#define LEDsBInv 248
-#define LEDsCInv 240
-#define LEDsDInv 227
+const LEDsBInv: u8 = 248;
+const LEDsCInv: u8 = 240;
+const LEDsDInv: u8 = 227;
 
 #define LED_B_Off();   DDRB &= LEDsBInv;  PORTB &= LEDsBInv;
 #define LED_C_Off();   DDRC &= LEDsCInv;  PORTC &= LEDsCInv;
@@ -86,7 +89,7 @@
 
 #define AllLEDsOff();  LED_B_Off(); LED_C_Off(); LED_D_Off();
 
-#define tempfade 63
+const tempfade: u8 = 63;
 
 
 void TakeHigh(byte LEDline)
@@ -187,15 +190,10 @@ void TakeLow(byte LEDline)
 }
 
 
-void delayTime(byte time)
-{
-  unsigned int delayvar;
-  delayvar = 0;
-  while (delayvar <=  time)
-  {
-    asm("nop");
-    delayvar++;
-  }
+fn delayTime(time: u8) {
+    for _ in 0..time {
+        avr_device::asm::nop();
+    }
 }
 
 
@@ -260,7 +258,7 @@ byte MinNow;
 byte HrNow;
 byte HrDisp,MinDisp, SecDisp;
 
-#define EELength 7
+const EELength: u8 = 7;
 byte EEvalues[EELength];
 
 // Variables to store brightness of the three LED rings.
@@ -1133,7 +1131,7 @@ void loop()
     }
     else if (OptionMode) {  // Option setting mode
 
-#define StartOptTimeLimit 30
+const StartOptTimeLimit: u8 = 30;
         if (StartingOption < StartOptTimeLimit) {
 
         AlignLoopCount++;  // Borrowing a counter variable...
