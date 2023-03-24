@@ -238,76 +238,100 @@ void digitalClockDisplay(){
   Serial.println(day(),DEC);
 }
 
-const byte SecHi[30] = {
-  2,3,4,5,6,1,3,4,5,6,1,2,4,5,6,1,2,3,5,6,1,2,3,4,6,1,2,3,4,5};
-const byte SecLo[30] = {
-  1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6};
+const SecHi: [u8: 30] = [
+  2,3,4,5,6,1,3,4,5,6,1,2,4,5,6,1,2,3,5,6,1,2,3,4,6,1,2,3,4,5];
+const SecLo: [u8: 30] = [
+  1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6];
 
-const byte MinHi[30] = {
-  1,7,1,8,1,9,2,7,2,8,2,9,3,7,3,8,3,9,4,7,4,8,4,9,5,7,5,8,5,9};
-const byte MinLo[30] = {
-  7,1,8,1,9,1,7,2,8,2,9,2,7,3,8,3,9,3,7,4,8,4,9,4,7,5,8,5,9,5};
+const MinHi: [u8: 30] = [
+  1,7,1,8,1,9,2,7,2,8,2,9,3,7,3,8,3,9,4,7,4,8,4,9,5,7,5,8,5,9];
+const  MinLo: [u8: 30] = [
+  7,1,8,1,9,1,7,2,8,2,9,2,7,3,8,3,9,3,7,4,8,4,9,4,7,5,8,5,9,5];
 
-const byte HrHi[12]  = {
-  10, 1, 2,10,10, 6, 3, 10,10, 4, 5,10};
-const byte HrLo[12]  = {
-  1,10,10, 2, 6,10,10, 3, 4,10,10, 5};
+const HrHi: [u8: 12]  = [
+  10, 1, 2,10,10, 6, 3, 10,10, 4, 5,10];
+const HrLo: [u8: 12]  = [
+  1,10,10, 2, 6,10,10, 3, 4,10,10, 5];
 
-byte SecNow;
-byte MinNow;
-byte HrNow;
-byte HrDisp,MinDisp, SecDisp;
+static mut SecNow: u8;
+static mut MinNow: u8;
+static mut HrNow: u8;
+static mut HrDisp: u8;
+static mut MinDisp: u8;
+static mut SecDisp: u8;
 
 const EELength: u8 = 7;
-byte EEvalues[EELength];
+static mut EEvalues: [u8: EELength];
 
 // Variables to store brightness of the three LED rings.
-byte HourBright;
-byte MinBright;
-byte SecBright;
-byte MainBright;
+static mut HourBright: u8;
+static mut MinBright: u8;
+static mut SecBright:u8;
+static mut MainBright:u8;
 
-unsigned long LastTime;
-unsigned long TimeNow;
-byte TimeSinceButton;
-byte LastSavedBrightness;
+static mut LastTime: u32;
+static mut TimeNow: u32;
+static mut TimeSinceButton: u8;
+static mut LastSavedBrightness: u8;
 
-byte PINDLast;
+static mut PINDLast: u8;
 
 // Modes:
-byte CCW;
-byte ExtRTC;
-byte SleepMode;
-byte FadeMode;
+static mut CCW: u8;
+static mut ExtRTC: u8;
+static mut SleepMode: u8;
+static mut FadeMode: u8;
 
-byte VCRmode;  // In VCR mode, the clock blinks at you because the time hasn't been set yet.
-byte FactoryResetDisable;  // To make sure that we don't accidentally reset the settings...
+static mut VCRmode: u8;  // In VCR mode, the clock blinks at you because the time hasn't been set yet.
+static mut FactoryResetDisable: u8;  // To make sure that we don't accidentally reset the settings...
 
-byte SettingTime;
-byte AlignMode;
-byte OptionMode;
-byte AlignValue;
-char AlignRate;
+static mut SettingTime: u8;
+static mut AlignMode: u8;
+static mut OptionMode: u8;
+static mut AlignValue: u8;
+static mut AlignRate: i8;
 
-byte AlignLoopCount;
-byte StartingOption;
+static mut AlignLoopCount: u8;
+static mut StartingOption: u8;
 
-byte HoldTimeSet;
-byte HoldOption;
-byte HoldAlign;
+static mut HoldTimeSet: u8;
+static mut HoldOption: u8;
+static mut HoldAlign: u8;
 
-byte MomentaryOverridePlus;
-byte MomentaryOverrideMinus;
-byte MomentaryOverrideZ;
+static mut MomentaryOverridePlus: u8;
+static mut MomentaryOverrideMinus: u8;
+static mut MomentaryOverrideZ: u8;
 
-unsigned long  prevtime;
-unsigned long millisCopy;
+static mut prevtime: u32;
+static mut millisCopy: u32;
 
-byte SecNext,  MinNext, HrNext;
-byte h0, h1, h2, h3, h4, h5;
-byte l0, l1, l2, l3, l4, l5;
-byte d0, d1, d2, d3, d4, d5;
-byte HrFade1, HrFade2, MinFade1, MinFade2, SecFade1, SecFade2;
+static mut SecNext: u8;
+static mut MinNext:u8;
+static mut HrNext:u8;
+static mut h0: u8;
+static mut h1: u8;
+static mut h2: u8;
+static mut h3: u8;
+static mut h4: u8;
+static mut h5: u8;
+static mut l0: u8;
+static mut l1: u8;
+static mut l2: u8;
+static mut l3: u8;
+static mut l4: u8;
+static mut l5: u8;
+static mut d0: u8;
+static mut d1: u8;
+static mut d2: u8;
+static mut d3: u8;
+static mut d4: u8;
+static mut d5: u8;
+static mut HrFade1: u8;
+static mut HrFade2: u8;
+static mut MinFade1: u8;
+static mut  MinFade2: u8;
+static mut SecFade1: u8;
+static mut SecFade2: u8;
 
 
 void ApplyDefaults (void) {

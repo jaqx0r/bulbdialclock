@@ -3,3 +3,8 @@ This is a fork of the original sketch for the Bulbdial Clock sold by http://evil
 I've updated it for use with the Arduino 1.0 IDE and the updated Time.h library without making any changes the default functionality.
 
 I've tested it with my Bulbdial and used the processing sketch to sync the time with my PC.
+
+
+# References
+
+For type conversion https://learn.sparkfun.com/tutorials/data-types-in-arduino/all indicates the size and signedness of Arduino C types.
