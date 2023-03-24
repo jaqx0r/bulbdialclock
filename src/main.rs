@@ -594,6 +594,38 @@ byte RTCgetTime()
 }
 
 
+void IncrAlignVal (void)
+{
+  AlignValue++;
+
+  if (AlignMode < 5)  // seconds or minutes
+  {
+    if (AlignValue > 29)
+      AlignValue = 0;
+  }
+  else
+  {
+    if (AlignValue > 11)
+      AlignValue = 0;
+  }
+}
+
+
+void DecrAlignVal (void)
+{
+  if (AlignValue > 0)
+    AlignValue--;
+  else if (AlignMode < 5)  // seconds or minutes
+  {
+    AlignValue = 29;
+  }
+  else  // hours
+  {
+    AlignValue = 11;
+  }
+}
+
+             
 void setup()  // run once, when the sketch starts
 {
   Serial.begin(19200);
@@ -673,37 +705,6 @@ void setup()  // run once, when the sketch starts
 
 }  // End Setup
 
-
-void IncrAlignVal (void)
-{
-  AlignValue++;
-
-  if (AlignMode < 5)  // seconds or minutes
-  {
-    if (AlignValue > 29)
-      AlignValue = 0;
-  }
-  else
-  {
-    if (AlignValue > 11)
-      AlignValue = 0;
-  }
-}
-
-
-void DecrAlignVal (void)
-{
-  if (AlignValue > 0)
-    AlignValue--;
-  else if (AlignMode < 5)  // seconds or minutes
-  {
-    AlignValue = 29;
-  }
-  else  // hours
-  {
-    AlignValue = 11;
-  }
-}
 
 
 void loop()
