@@ -320,32 +320,34 @@ fn EESaveSettings (eeprom: arduino_hal::eeprom::EEPROM){
 fn normalTimeDisplay() {
 
   SecDisp = (SecNow + 30);  // Offset by 30 s to project *shadow* in the right place.
-  if ( SecDisp > 59)
-    SecDisp -= 60;
+  if ( SecDisp > 59) {
+      SecDisp -= 60;
+  }
   SecDisp >>= 1;  // Divide by two, since there are 30 LEDs, not 60.
 
   SecNext = SecDisp + 1;
-  if (SecNext > 29)
+  if (SecNext > 29) {
     SecNext = 0;
-
+  }
   MinDisp = (MinNow + 30);  // Offset by 30 m to project *shadow* in the right place.
-  if ( MinDisp > 59)
+  if ( MinDisp > 59) {
     MinDisp -= 60;
-  MinDisp >>= 1;  // Divide by two, since there are 30 LEDs, not 60.
+  }
+    MinDisp >>= 1;  // Divide by two, since there are 30 LEDs, not 60.
 
   MinNext = MinDisp + 1;
-  if (MinNext > 29)
+  if (MinNext > 29){
     MinNext = 0;
-
+  }
   HrDisp = (HrNow + 6);  // Offset by 6 h to project *shadow* in the right place.
 
-  if ( HrDisp > 11)
+    if ( HrDisp > 11){
     HrDisp -= 12;
-
+}
   HrNext = HrDisp + 1;
-  if (HrNext > 11)
+    if (HrNext > 11){
     HrNext = 0;
-
+    }
 }
 
 
@@ -415,15 +417,15 @@ fn RTCgetTime() -> u8
 { // Read out time from RTC module, if present
   // send request to receive data starting at register 0
 
-  byte status = 0;
+  let mut status:u8 = 0;
   Wire.beginTransmission(104);  // 104 is DS3231 device address
   Wire.write((byte)0);  // start at register 0
   Wire.endTransmission();
   Wire.requestFrom(104, 3);  // request three bytes (seconds, minutes, hours)
 
-  int seconds, minutes, hours;
-  unsigned int temptime1, temptime2;
-  byte updatetime = 0;
+  let mut seconds:i16, mut minutes:i16, mut hours:i16;
+  let mut temptime1:u16, mut temptime2:u16;
+  let mut updatetime:u8 = 0;
 
   while(Wire.available())
   {
@@ -465,17 +467,19 @@ fn RTCgetTime() -> u8
       }
     }
 
-    if (ExtRTC == 0)
+    if (ExtRTC == 0) {
       updatetime = 1;
-
+    }
     if (updatetime)
     {
       SecNow = seconds;
       MinNow = minutes;
       HrNow = hours;
 
-      if ( HrNow > 11)  // Convert 24-hour mode to 12-hour mode
-        HrNow -= 12;
+         // Convert 24-hour mode to 12-hour mode
+      if ( HrNow > 11)  {
+          HrNow -= 12;
+      }
     }
   }
 
@@ -489,21 +493,24 @@ fn IncrAlignVal ()
 
   if (AlignMode < 5)  // seconds or minutes
   {
-    if (AlignValue > 29)
-      AlignValue = 0;
+    if (AlignValue > 29) {
+        AlignValue = 0;
+    }
   }
   else
   {
-    if (AlignValue > 11)
-      AlignValue = 0;
+    if (AlignValue > 11) {
+        AlignValue = 0;
+    }
   }
 }
 
 
 fn DecrAlignVal ()
 {
-  if (AlignValue > 0)
-    AlignValue--;
+  if (AlignValue > 0) {
+      AlignValue--;
+  }
   else if (AlignMode < 5)  // seconds or minutes
   {
     AlignValue = 29;
@@ -601,11 +608,9 @@ fn main() -> ! {
 
 loop
 {
-  byte HighLine, LowLine;
-  byte PINDcopy;
-  byte RefreshTime;
-
-  RefreshTime = AlignMode + SettingTime + OptionMode;
+  let mut HighLine:u8, LowLine:u8;
+  let mut PINDcopy:u8;
+  let mut RefreshTime = AlignMode + SettingTime + OptionMode;
 
   PINDcopy = PIND & buttonmask;
 
@@ -625,36 +630,40 @@ loop
       }
       else
       {
-        if (SleepMode)
+        if (SleepMode) {
           SleepMode = 0;
-        else{
+      }        else{
           if (AlignMode) {
 
             if ( AlignMode & 1)  // Odd mode:
             {
-              if (AlignRate < 2)
-                AlignRate++;
+              if (AlignRate < 2) {
+                  AlignRate++;
+              }
             }
-            else
+            else {
               IncrAlignVal();  // Even mode:
-
+            }
           }
           else if (OptionMode) {
 
             if (OptionMode == 1)
             {
-              if (HourBright < 62)
-                HourBright += 2;
+              if (HourBright < 62) {
+                  HourBright += 2;
+              }
             }
             if (OptionMode == 2)
             {
-              if (MinBright < 62)
-                MinBright += 2;
+              if (MinBright < 62) {
+                  MinBright += 2;
+              }
             }
             if (OptionMode == 3)
             {
-              if (SecBright < 62)
-                SecBright += 2;
+              if (SecBright < 62) {
+                  SecBright += 2;
+              }
             }
             if (OptionMode == 4)
             {
@@ -671,27 +680,31 @@ loop
             if (SettingTime == 1)
             {
               HrNow++;
-              if (HrNow > 11)
-                HrNow = 0;
+                if (HrNow > 11) {
+                    HrNow = 0;
+                }
             }
             if (SettingTime == 2)
             {
               MinNow++;
-              if (MinNow > 59)
-                MinNow = 0;
+              if (MinNow > 59) {
+                  MinNow = 0;
+              }
             }
             if (SettingTime == 3)
             {
               SecNow++;
-              if (SecNow > 59)
-                SecNow = 0;
+              if (SecNow > 59) {
+                  SecNow = 0;
+              }
             }
           }
           else {
             // Brightness control mode
             MainBright++;
-            if (MainBright > 8)
-              MainBright = 1;
+            if (MainBright > 8) {
+                MainBright = 1;
+            }
           }
         }
       }
@@ -710,36 +723,40 @@ loop
       }
       else
       {
-        if (SleepMode)
+        if (SleepMode) {
           SleepMode = 0;
-        else{
+        }        else{
           if (AlignMode) {
 
             if ( AlignMode & 1)  // Odd mode:
             {
-              if (AlignRate > -3)
-                AlignRate--;
+              if (AlignRate > -3) {
+                  AlignRate--;
+              }
             }
-            else
+            else {
               DecrAlignVal();  // Even mode:
-
+            }
           }
           else if (OptionMode) {
 
             if (OptionMode == 1)
             {
-              if (HourBright > 1)
-                HourBright -= 2;
+              if (HourBright > 1) {
+                  HourBright -= 2;
+              }
             }
             if (OptionMode == 2)
             {
-              if (MinBright > 1)
-                MinBright -= 2;
+              if (MinBright > 1) {
+                  MinBright -= 2;
+              }
             }
             if (OptionMode == 3)
             {
-              if (SecBright > 1)
-                SecBright -= 2;
+              if (SecBright > 1) {
+                  SecBright -= 2;
+              }
             }
             if (OptionMode == 4)
             {
@@ -754,36 +771,40 @@ loop
           else if (SettingTime) {
             if (SettingTime == 1)
             {
-              if (HrNow > 0)
+              if (HrNow > 0) {
                 HrNow--;
-              else
-                HrNow = 11;
+              }              else {
+                  HrNow = 11;
+              }
             }
             if (SettingTime == 2)
             {
-              if (MinNow > 0)
+                if (MinNow > 0) {
                 MinNow--;
-              else
-                MinNow = 59;
+          } else {
+                    MinNow = 59;
+                }
             }
             if (SettingTime == 3)
             {
-              if (SecNow > 0)
+              if (SecNow > 0) {
                 SecNow--;
-              else
-                SecNow = 59;
+              } else {
+                  SecNow = 59;
+              }
             }
           }
           else {  // Normal brightness adjustment mode
-            if (MainBright > 1)
+              if (MainBright > 1) {
               MainBright--;
-            else
-              MainBright = 8;
+              } else {
+                  MainBright = 8;
+              }
           }
         }
       }
     }
-
+        
     if ((PINDcopy & 128) && ((PINDLast & 128) == 0))
     {  // "Z" Button was pressed and just released!
 
@@ -800,9 +821,9 @@ loop
         if (AlignMode) {
 
           AlignMode++;
-          if (AlignMode > 6)
+          if (AlignMode > 6) {
             AlignMode = 1;
-
+          }
           AlignValue = 0;
           AlignRate = 2;
         }
@@ -811,20 +832,23 @@ loop
           OptionMode++;
           StartingOption = 0;
 
-          if (OptionMode > 5)
-            OptionMode = 1;
+          if (OptionMode > 5) {
+              OptionMode = 1;
+          }
         }
         else if (SettingTime) {
           SettingTime++;
-          if (SettingTime > 3)
-            SettingTime = 1;
+          if (SettingTime > 3) {
+              SettingTime = 1;
+          }
         }
         else {
 
-          if (SleepMode == 0)
+            if (SleepMode == 0) {
             SleepMode = 1;
-          else
-            SleepMode = 0;
+            }          else{
+                SleepMode = 0;
+            }
         }
       }
     }
@@ -840,9 +864,9 @@ loop
   // If you have the optional RTC, this error will be corrected next time we read the
   // time from the RTC.)
 
-  if (millisCopy < LastTime)
+  if (millisCopy < LastTime) {
     LastTime = 0;
-
+  }
   if ((millisCopy - LastTime) >= 1000)
   {
     LastTime += 1000;
@@ -983,16 +1007,18 @@ loop
       SecNow = 0;
       MinNow++;
 
-      if ((SettingTime == 0) && ExtRTC)  // Check value at RTC ONCE PER MINUTE, if enabled.
-        RTCgetTime();                    // Do not check RTC time, if we are in time-setting mode.
+      if ((SettingTime == 0) && ExtRTC) { // Check value at RTC ONCE PER MINUTE, if enabled.
+          RTCgetTime();                    // Do not check RTC time, if we are in time-setting mode.
+      }
     }
 
     if (MinNow > 59){
       MinNow = 0;
       HrNow++;
 
-      if  (HrNow > 11)
-        HrNow = 0;
+      if  (HrNow > 11) {
+          HrNow = 0;
+      }
     }
 
     RefreshTime = 1;
@@ -1010,41 +1036,44 @@ loop
         if (AlignRate >= 0){
           AlignRateAbs = AlignRate + 1;
         }
-        else
-          AlignRateAbs = -AlignRate;
+        else {
+            AlignRateAbs = -AlignRate;
+        }
 
         // Serial.println(AlignRateAbs,DEC);
 
         AlignLoopCount++;
 
         byte ScaleRate;
-        if (AlignRateAbs > 2)
+        if (AlignRateAbs > 2) {
           ScaleRate = 10;
-        else if (AlignRateAbs == 2)
+        } else if (AlignRateAbs == 2) {
           ScaleRate = 50;
-        else
-          ScaleRate = 250;
+        } else {
+            ScaleRate = 250;
+        }
 
         if (AlignLoopCount > ScaleRate) {
           AlignLoopCount = 0;
-
-          if (AlignRate >= 0)
+ 
+          if (AlignRate >= 0) {
             IncrAlignVal();
-          else
+          } else {
             DecrAlignVal();
-
+          }
         }
       }
 
       SecDisp = (AlignValue + 15);  // Offset by 30 s to project *shadow* in the right place.
-      if ( SecDisp > 29)
+      if ( SecDisp > 29) {
         SecDisp -= 30;
-
+      }
       MinDisp = SecDisp;
       HrDisp = (AlignValue + 6);  // Offset by 6 h to project *shadow* in the right place.
 
-      if ( HrDisp > 11)
-        HrDisp -= 12;
+      if ( HrDisp > 11) {
+          HrDisp -= 12;
+      }
     }
     else if (OptionMode) {  // Option setting mode
 
@@ -1060,20 +1089,23 @@ const StartOptTimeLimit: u8 = 30;
           if (OptionMode == 1)  // Red (upper) ring color balance
           {
             HrDisp++;
-            if (HrDisp > 11)
-              HrDisp = 0;
+            if (HrDisp > 11) {
+                HrDisp = 0;
+            }
           }
           if (OptionMode == 2)  // Green (middle) ring color balance
           {
             MinDisp++;
-            if (MinDisp > 29)
-              MinDisp = 0;
+            if (MinDisp > 29) {
+                MinDisp = 0;
+            }
           }
           if (OptionMode == 3)  // Blue (lower) ring color balance
           {
             SecDisp++;
-            if (SecDisp > 29)
-              SecDisp = 0;
+            if (SecDisp > 29) {
+                SecDisp = 0;
+            }
           }
           if (OptionMode >= 4)  // CW vs CCW OR fade mode
           {
@@ -1087,12 +1119,14 @@ const StartOptTimeLimit: u8 = 30;
         if (OptionMode == 4)
         {
           MinDisp++;
-          if (MinDisp > 29)
-            MinDisp = 0;
+          if (MinDisp > 29) {
+              MinDisp = 0;
+          }
           SecDisp = MinDisp;
         }
-        else
-          normalTimeDisplay();
+        else {
+            normalTimeDisplay();
+        }
 
       }
     }
@@ -1111,18 +1145,24 @@ const StartOptTimeLimit: u8 = 30;
 
     if (CCW){
       // Counterclockwise
-      if (HrDisp)
-        h3 = 12 - HrDisp;
-      if (HrNext)
-        l3 = 12 - HrNext;
-      if (MinDisp)
-        h4 = 30 - MinDisp;
-      if (MinNext)
-        l4 = 30 - MinNext;
-      if (SecDisp)
-        h5 = 30 - SecDisp;
-      if (SecNext)
-        l5 = 30 - SecNext;
+      if (HrDisp) {
+          h3 = 12 - HrDisp;
+      }
+      if (HrNext) {
+          l3 = 12 - HrNext;
+      }
+      if (MinDisp) {
+          h4 = 30 - MinDisp;
+      }
+      if (MinNext) {
+          l4 = 30 - MinNext;
+      }
+      if (SecDisp) {
+          h5 = 30 - SecDisp;
+      }
+      if (SecNext) {
+          l5 = 30 - SecNext;
+      }
 
       // Serial.print(HrDisp,DEC);
       // Serial.print(", ");
@@ -1187,12 +1227,13 @@ const StartOptTimeLimit: u8 = 30;
     SecFade1 = 0;
 
     if (AlignMode){
-      if (AlignMode < 3)
-        SecFade1 = tempfade;
-      else if (AlignMode > 4)
-        HrFade1 = tempfade;
-      else
-        MinFade1 = tempfade;
+      if (AlignMode < 3) {
+          SecFade1 = tempfade;
+      } else if (AlignMode > 4) {
+          HrFade1 = tempfade;
+      } else {
+          MinFade1 = tempfade;
+      }
     }
     else{  // Must be OptionMode....
       if (StartingOption < StartOptTimeLimit)
@@ -1225,8 +1266,9 @@ const StartOptTimeLimit: u8 = 30;
         {
           HrFade1 = 0;
         }
-        else
-          normalFades();
+        else {
+            normalFades();
+        }
       }
     }
 
@@ -1239,12 +1281,14 @@ const StartOptTimeLimit: u8 = 30;
 
   byte tempbright = MainBright;
 
-  if (SleepMode)
-    tempbright = 0;
+  if (SleepMode) {
+      tempbright = 0;
+  }
 
   if (VCRmode){
-    if (SecNow & 1)
-      tempbright = 0;
+    if (SecNow & 1) {
+        tempbright = 0;
+    }
   }
 
   d0 = HourBright*HrFade1*tempbright >> 7;
@@ -1325,8 +1369,9 @@ const StartOptTimeLimit: u8 = 30;
     SecNow = second();
     HrNow = hour();
 
-    if ( HrNow > 11)  // Convert 24-hour mode to 12-hour mode
-      HrNow -= 12;
+    if ( HrNow > 11) {  // Convert 24-hour mode to 12-hour mode
+        HrNow -= 12;
+    }
 
     // Print confirmation
     Serial.println("Clock synced at: ");
@@ -1336,8 +1381,9 @@ const StartOptTimeLimit: u8 = 30;
 
       if ( prevtime != now() )
       {
-        if (ExtRTC)
-          RTCsetTime(HrNow,MinNow,SecNow);
+        if (ExtRTC) {
+            RTCsetTime(HrNow,MinNow,SecNow);
+        }
 
         timeStatus();  // refresh the Date and time properties
         digitalClockDisplay( );  // update digital clock
