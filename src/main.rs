@@ -69,125 +69,8 @@ const TIME_HEADER: u8 = 255;  // Header tag for serial time sync message
 // The buttons are located at D5, D6, & D7.
 const buttonmask: u8 = 224;
 
-// LED outputs B0-B2:
-const LEDsB: u8 = 7;
-
-// C0-C3 are LED outputs:
-const LEDsC: u8 = 15;
-
-// TX, PD2,PD3,PD4 are LED outputs.
-const LEDsD: u8 = 28;
-
-// Negative masks of those LED positions, for quick turn-off:
-const LEDsBInv: u8 = 248;
-const LEDsCInv: u8 = 240;
-const LEDsDInv: u8 = 227;
-
-#define LED_B_Off();   DDRB &= LEDsBInv;  PORTB &= LEDsBInv;
-#define LED_C_Off();   DDRC &= LEDsCInv;  PORTC &= LEDsCInv;
-#define LED_D_Off();   DDRD &= LEDsDInv;  PORTD &= LEDsDInv;
-
-#define AllLEDsOff();  LED_B_Off(); LED_C_Off(); LED_D_Off();
-
 const tempfade: u8 = 63;
 
-
-void TakeHigh(byte LEDline)
-{
-  switch( LEDline )
-  {
-  case 1:
-    DDRB  |= 4;
-    PORTB |= 4;
-    break;
-  case 2:
-    DDRC  |= 1;
-    PORTC |= 1;
-    break;
-  case 3:
-    DDRC  |= 2;
-    PORTC |= 2;
-    break;
-  case 4:
-    DDRC  |= 4;
-    PORTC |= 4;
-    break;
-  case 5:
-    DDRC  |= 8;
-    PORTC |= 8;
-    break;
-  case 6:
-    DDRD  |= 16;
-    PORTD |= 16;
-    break;
-  case 7:
-    DDRD  |= 4;
-    PORTD |= 4;
-    break;
-  case 8:
-    DDRB  |= 1;
-    PORTB |= 1;
-    break;
-  case 9:
-    DDRD  |= 8;
-    PORTD |= 8;
-    break;
-  case 10:
-    DDRB  |= 2;
-    PORTB |= 2;
-    break;
-    // default:
-  }
-}
-
-
-void TakeLow(byte LEDline)
-{
-  switch( LEDline )
-  {
-  case 1:
-    DDRB  |= 4;
-    PORTB &= 251;
-    break;
-  case 2:
-    DDRC  |= 1;
-    PORTC &= 254;
-    break;
-  case 3:
-    DDRC  |= 2;
-    PORTC &= 253;
-    break;
-  case 4:
-    DDRC  |= 4;
-    PORTC &= 251;
-    break;
-  case 5:
-    DDRC  |= 8;
-    PORTC &= 247;
-    break;
-  case 6:
-    DDRD  |= 16;
-    PORTD &= 239;
-    break;
-  case 7:
-    DDRD  |= 4;
-    PORTD &= 251;
-    break;
-  case 8:
-    DDRB  |= 1;
-    PORTB &= 254;
-    break;
-  case 9:
-    DDRD  |= 8;
-    PORTD &= 247;
-    break;
-  case 10:
-    DDRB  |= 2;
-    PORTB &= 253;
-    break;
-    // default:
-  }
-}
 
 
 fn delayTime(time: u8) {
@@ -629,16 +512,59 @@ fn DecrAlignVal ()
 
 #[arduino_hal::entry]             
 fn main() -> ! {
-  Serial.begin(19200);
-  setTime(0);
 
-  PORTB = 0;
-  PORTC = 0;
-  PORTD = 0;
+    let dp = arduino_hal::Peripherals::take().unwrap();
+    let pins = arduino_hal::pins!(dp);
+    let serial = arduino_hal::default_serial!(dp, pins, 19200);
 
-  DDRB = 0;  // All inputs
-  DDRC = 0;  // All inputs
-  DDRD = _BV(1);  // All inputs except TX.
+    //setTime(0);
+    
+    // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
+    // https://docs.arduino.cc/hacking/hardware/PinMapping168
+    let led1 = pins.pb2.into_output();  // PB2
+    let led2 = pins.pc0.into_output(); // PC0
+    let led3 = pins.pc1.into_output(); // PC1
+    let led4 = pins.pc2.into_output(); // PC2
+    let led5 = pins.pc3.into_output(); // PC3
+    let led6 = pins.pd4.into_output(); // PD4
+    let led7 = pins.pd2.into_output(); // PD2
+    let led8 = pins.pb0.into_output(); // PB0
+    let led9 = pins.pd3.into_output(); // PD3
+    let led10 = pins.pb1.into_output(); // PB1
+
+    fn TakeHigh(LEDLine: u8) {
+        match LEDLine {
+            1 => led1.set_high();
+            2= > led2.set_high();
+            3 => led3.set_high();
+            4 => led4.set_high();
+            5 => led6.set_high();
+            6=>led6.set_high();
+            7=>led7.set_high();
+            8=>led8.set_high();
+            9=>led9.set_high();
+            10=>led10.set_high();
+        }
+    }
+    fn TakeLow(LEDLine: u8) {
+        match LEDLine {
+            1 => led1.set_low();
+            2 => led2.set_low();
+            3 => led3.set_low();
+            4 => led4.set_low();
+            5 => led5.set_low();
+            6 => led6.set_low();
+            7 => led7.set_low();
+            8 => led8.set_low();
+            9 => led9.set_low();
+            10 => led10.set_low();
+        }
+    }
+    fn AllLEDSOff() {
+        for i in 1..10 {
+            TakeLow(i)
+        }
+    }
 
   PORTD = buttonmask;  // Pull-up resistors for buttons
 

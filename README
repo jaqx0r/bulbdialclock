@@ -8,3 +8,7 @@ I've tested it with my Bulbdial and used the processing sketch to sync the time 
 # References
 
 For type conversion https://learn.sparkfun.com/tutorials/data-types-in-arduino/all indicates the size and signedness of Arduino C types.
+
+For conversion of the LED manipulation code,
+https://docs.arduino.cc/hacking/software/PortManipulation and
+https://docs.arduino.cc/hacking/hardware/PinMapping168
