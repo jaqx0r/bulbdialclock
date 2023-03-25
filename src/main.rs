@@ -239,70 +239,74 @@ fn ApplyDefaults () {
 }
 
 
-fn EEReadSettings () {  // TODO: Detect ANY bad values, not just 255.
+fn EEReadSettings (eeprom: arduino_hal::eeprom::EEPROM) {  // TODO: Detect ANY bad values, not just 255.
+    let mut detectBad: u8 = 0;
+    let mut value: u8 = 255;
 
-  byte detectBad = 0;
-  byte value = 255;
+    value = eeprom.read_byte(0);
+    if value > 8 { // MainBright has a maximum possible value of 8.
+        detectBad = 1
+    } else {
+        MainBright = value
+    }    
+    if (value == 0)
+        MainBright = 1;  // Turn back on when power goes back on-- don't leave it dark.
 
-  value = EEPROM.read(0);
-
-  if (value > 8)
+  value = eeprom.read_byte(1);
+  if (value > 63) {
     detectBad = 1;
-  else
-    MainBright = value;  // MainBright has maximum possible value of 8.
+  } else {
+      HourBright = value;
+  }
 
-  if (value == 0)
-    MainBright = 1;  // Turn back on when power goes back on-- don't leave it dark.
-
-  value = EEPROM.read(1);
-  if (value > 63)
+  value = eeprom.read_byte(2);
+  if (value > 63) {
     detectBad = 1;
-  else
-    HourBright = value;
+  }  else {
+      MinBright = value;
+  }
 
-  value = EEPROM.read(2);
-  if (value > 63)
+  value = eeprom.read_byte(3);
+  if (value > 63) {
     detectBad = 1;
-  else
-    MinBright = value;
+  }  else {
+      SecBright = value;
+  }
 
-  value = EEPROM.read(3);
-  if (value > 63)
+  value = eeprom.read_byte(4);
+  if (value > 1) {
     detectBad = 1;
-  else
-    SecBright = value;
+  }  else{
+      CCW = value;
+  }
 
-  value = EEPROM.read(4);
-  if (value > 1)
+  value = eeprom.read_byte(5);
+  if (value == 255) {
     detectBad = 1;
-  else
-    CCW = value;
+  }  else {
+      FadeMode = value;
+  }
 
-  value = EEPROM.read(5);
-  if (value == 255)
-    detectBad = 1;
-  else
-    FadeMode = value;
-
-  if (detectBad)
-    ApplyDefaults();
+  if (detectBad) {
+      ApplyDefaults();
+  }
 
   LastSavedBrightness = MainBright;
 
 }
 
-fn EESaveSettings (){
+fn EESaveSettings (eeprom: arduino_hal::eeprom::EEPROM){
   //EEPROM.write(Addr, Value);
 
   // Careful if you use  this function: EEPROM has a limited number of write
   // cycles in its life.  Good for human-operated buttons, bad for automation.
 
-  EEPROM.write(0, MainBright);
-  EEPROM.write(1, HourBright);
-  EEPROM.write(2, MinBright);
-  EEPROM.write(3, SecBright);
-  EEPROM.write(4, CCW);
-  EEPROM.write(5, FadeMode);
+  eeprom.write_byte(0, MainBright);
+  eeprom.write_byte(1, HourBright);
+  eeprom.write_byte(2, MinBright);
+  eeprom.write_byte(3, SecBright);
+  eeprom.write_byte(4, CCW);
+  eeprom.write_byte(5, FadeMode);
 
   LastSavedBrightness = MainBright;
 
@@ -380,26 +384,26 @@ fn normalFades() {
 }
 
 
-fn RTCsetTime(byte hourIn, byte minuteIn, byte secondIn)
+fn RTCsetTime(hourIn:u8, minuteIn:u8, secondIn:u8)
 {
   Wire.beginTransmission(104);  // 104 is DS3231 device address
   Wire.write((byte)0);  // start at register 0
 
-  byte ts = secondIn / 10;
-  byte os = secondIn - ts*10;
-  byte ss = (ts << 4) + os;
+  let ts:u8 = secondIn / 10;
+    let os:u8 = secondIn - ts*10;
+  let ss:u8 = (ts << 4) + os;
 
   Wire.write(ss);  // Send seconds as BCD
 
-  byte tm = minuteIn /10;
-  byte om = minuteIn - tm*10;
-  byte sm = (tm << 4 ) | om;
+  let tm:u8 = minuteIn /10;
+  let om:u8 = minuteIn - tm*10;
+  let sm:u8 = (tm << 4 ) | om;
 
   Wire.write(sm);  // Send minutes as BCD
 
-  byte th = hourIn /10;
-  byte oh = hourIn - th*10;
-  byte sh = (th << 4 ) | oh;
+  let th:u8 = hourIn /10;
+  let oh:u8 = hourIn - th*10;
+  let sh:u8 = (th << 4 ) | oh;
 
   Wire.write(sh);  // Send hours as BCD
 
