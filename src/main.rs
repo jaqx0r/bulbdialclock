@@ -35,6 +35,9 @@
          non_camel_case_types,
          non_snake_case)]
 
+use core::mem;
+use arduino_hal::prelude::*;
+
 /*
  EEPROM variables that are saved:  7
 
@@ -121,44 +124,44 @@ fn printDigits(s_tx: &mut SerialWriter, digits: u8){
     // utility function for digital clock display: prints preceding colon and leading 0
     ufmt::uwrite!(s_tx, ":").unwrap();
   if(digits < 10) {
-      ufmt::uwrite!(s_tx, '0').unwrap();
+      ufmt::uwrite!(s_tx,"0").unwrap();
   }
-  ufmt::uwrite!(s_tx, "%d", digits).unwrap();
+    ufmt::uwrite!(s_tx, "{}", digits).unwrap();
 }
 
 
 fn digitalClockDisplay(s_tx: &mut SerialWriter) {
   // digital clock display of current date and time
-    ufmt::uwrite!(s_tx, "%d", hour());
+    ufmt::uwrite!(s_tx, "{}", hour());
   printDigits(s_tx, minute());
   printDigits(s_tx, second());
-    ufmt::uwriteln(s_tx, " %s %s %d", weekday(), month, day()).unwrap();
+    ufmt::uwriteln!(s_tx, " {} {} {}", weekday(), month(), day()).unwrap();
 }
 
-const SecHi: [u8: 30] = [
+const SecHi: [u8; 30] = [
   2,3,4,5,6,1,3,4,5,6,1,2,4,5,6,1,2,3,5,6,1,2,3,4,6,1,2,3,4,5];
-const SecLo: [u8: 30] = [
+const SecLo: [u8; 30] = [
   1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6];
 
-const MinHi: [u8: 30] = [
+const MinHi: [u8; 30] = [
   1,7,1,8,1,9,2,7,2,8,2,9,3,7,3,8,3,9,4,7,4,8,4,9,5,7,5,8,5,9];
-const  MinLo: [u8: 30] = [
+const  MinLo: [u8; 30] = [
   7,1,8,1,9,1,7,2,8,2,9,2,7,3,8,3,9,3,7,4,8,4,9,4,7,5,8,5,9,5];
 
-const HrHi: [u8: 12]  = [
+const HrHi: [u8; 12]  = [
   10, 1, 2,10,10, 6, 3, 10,10, 4, 5,10];
-const HrLo: [u8: 12]  = [
+const HrLo: [u8; 12]  = [
   1,10,10, 2, 6,10,10, 3, 4,10,10, 5];
 
 static mut SecNow: u8 = 0;
 static mut MinNow: u8 = 0;
 static mut HrNow: u8 = 0;
-static mut HrDisp: u8;
+static mut HrDisp: u8 = 0;
 static mut MinDisp: u8 = 0;
 static mut SecDisp: u8 = 0;
 
 const EELength: u8 = 7;
-static mut EEvalues: [u8: EELength];
+static mut EEvalues: [u8; EELength] = [mem::MaybeUninit::<u8>::uninit(); EELength];
 
 // Variables to store brightness of the three LED rings.
 static mut HourBright: u8 = 30;
@@ -166,15 +169,15 @@ static mut MinBright: u8 =63;
 static mut SecBright:u8 = 63;
 static mut MainBright:u8 = 8; // 8 is maximum value.
 
-static mut LastTime: u32;
-static mut TimeNow: u32;
+static mut LastTime: u32 = mem::MaybeUninit::<u32>::uninit();
+static mut TimeNow: u32 = mem::MaybeUninit::<u32>::uninit();
 static mut TimeSinceButton: u8 = 0;
-static mut LastSavedBrightness: u8;
+static mut LastSavedBrightness: u8 = mem::MaybeUninit::<u8>::uninit();
 
-static mut PINDLast: u8;
+static mut PINDLast: u8 = mem::MaybeUninit::<u8>::uninit();
 
 // Modes:
-static mut CCW: u8 = 0 // presume clockwise, not counterclockwise
+static mut CCW: u8 = 0;  // presume clockwise, not counterclockwise
 static mut ExtRTC: u8 = 0;
 static mut SleepMode: u8 = 0;
 static mut FadeMode: u8 = 1; // Presume fading is enabled.
@@ -201,36 +204,36 @@ static mut MomentaryOverridePlus: u8 = 0;
 static mut MomentaryOverrideMinus: u8 = 0;
 static mut MomentaryOverrideZ: u8 = 0;
 
-static mut prevtime: u32;
-static mut millisCopy: u32;
+static mut prevtime: u32 = mem::MaybeUninit::<u32>::uninit();
+static mut millisCopy: u32 = mem::MaybeUninit::<u32>::uninit();
 
-static mut SecNext: u8;
-static mut MinNext:u8;
-static mut HrNext:u8;
-static mut h0: u8;
-static mut h1: u8;
-static mut h2: u8;
-static mut h3: u8;
-static mut h4: u8;
-static mut h5: u8;
-static mut l0: u8;
-static mut l1: u8;
-static mut l2: u8;
-static mut l3: u8;
-static mut l4: u8;
-static mut l5: u8;
-static mut d0: u8;
-static mut d1: u8;
-static mut d2: u8;
-static mut d3: u8;
-static mut d4: u8;
-static mut d5: u8;
-static mut HrFade1: u8;
-static mut HrFade2: u8;
-static mut MinFade1: u8;
-static mut  MinFade2: u8;
-static mut SecFade1: u8;
-static mut SecFade2: u8;
+static mut SecNext: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut MinNext:u8 = mem::MaybeUninit::<u8>::uninit();
+static mut HrNext:u8 = mem::MaybeUninit::<u8>::uninit();
+static mut h0: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut h1: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut h2: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut h3: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut h4: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut h5: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut l0: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut l1: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut l2: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut l3: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut l4: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut l5: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut d0: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut d1: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut d2: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut d3: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut d4: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut d5: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut HrFade1: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut HrFade2: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut MinFade1: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut  MinFade2: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut SecFade1: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut SecFade2: u8 = mem::MaybeUninit::<u8>::uninit();
 
 
 fn ApplyDefaults () {
@@ -253,7 +256,7 @@ fn ApplyDefaults () {
 }
 
 
-fn EEReadSettings (eeprom: arduino_hal::eeprom::EEPROM) {  // TODO: Detect ANY bad values, not just 255.
+fn EEReadSettings (eeprom: arduino_hal::Eeprom) {  // TODO: Detect ANY bad values, not just 255.
     let mut detectBad: u8 = 0;
     let mut value: u8 = 255;
 
@@ -263,9 +266,9 @@ fn EEReadSettings (eeprom: arduino_hal::eeprom::EEPROM) {  // TODO: Detect ANY b
     } else {
         MainBright = value
     }    
-    if (value == 0)
+    if (value == 0) {
         MainBright = 1;  // Turn back on when power goes back on-- don't leave it dark.
-
+    }
   value = eeprom.read_byte(1);
   if (value > 63) {
     detectBad = 1;
@@ -309,7 +312,7 @@ fn EEReadSettings (eeprom: arduino_hal::eeprom::EEPROM) {  // TODO: Detect ANY b
 
 }
 
-fn EESaveSettings (eeprom: arduino_hal::eeprom::EEPROM){
+fn EESaveSettings (eeprom: arduino_hal::Eeprom){
   //EEPROM.write(Addr, Value);
 
   // Careful if you use  this function: EEPROM has a limited number of write
@@ -403,7 +406,7 @@ fn normalFades() {
 // 104 is the DS3231 RTC device address
 const RTC_ADDRESS: u8 = 104;
 
-fn RTCsetTime(i2c: &mut arduino_hal:I2c, hourIn:u8, minuteIn:u8, secondIn:u8)
+fn RTCsetTime(i2c: &mut arduino_hal::I2c, hourIn:u8, minuteIn:u8, secondIn:u8)
 {
   let ts:u8 = secondIn / 10;
     let os:u8 = secondIn - ts*10;
@@ -433,8 +436,11 @@ fn RTCgetTime() -> u8
         Ok(_) => continue,
     }
 
-  let mut seconds:i16, mut minutes:i16, mut hours:i16;
-  let mut temptime1:u16, mut temptime2:u16;
+    let mut seconds:i16;
+    let mut minutes:i16;
+    let mut hours:i16;
+    let mut temptime1:u16;
+    let mut temptime2:u16;
   let mut updatetime:u8 = 0;
 
   {
@@ -466,13 +472,15 @@ fn RTCgetTime() -> u8
 
       if (temptime1 > temptime2)
       {
-        if ((temptime1 - temptime2) > 2)
-          updatetime = 1;
+        if ((temptime1 - temptime2) > 2) {
+            updatetime = 1;
+        }
       }
       else
       {
-        if ((temptime2 - temptime1) > 2)
-          updatetime = 1;
+        if ((temptime2 - temptime1) > 2) {
+            updatetime = 1;
+        }
       }
     }
 
@@ -498,7 +506,7 @@ fn RTCgetTime() -> u8
 
 fn IncrAlignVal ()
 {
-  AlignValue++;
+  AlignValue+=1;
 
   if (AlignMode < 5)  // seconds or minutes
   {
@@ -518,7 +526,7 @@ fn IncrAlignVal ()
 fn DecrAlignVal ()
 {
   if (AlignValue > 0) {
-      AlignValue--;
+      AlignValue-=1;
   }
   else if (AlignMode < 5)  // seconds or minutes
   {
@@ -552,39 +560,39 @@ fn main() -> ! {
     let led9 = pins.pd3.into_output(); // PD3
     let led10 = pins.pb1.into_output(); // PB1
 
-    fn TakeHigh(LEDLine: u8) {
+    let TakeHigh = |LEDLine: u8| {
         match LEDLine {
-            1 => led1.set_high();
-            2= > led2.set_high();
-            3 => led3.set_high();
-            4 => led4.set_high();
-            5 => led6.set_high();
-            6=>led6.set_high();
-            7=>led7.set_high();
-            8=>led8.set_high();
-            9=>led9.set_high();
-            10=>led10.set_high();
+            1 => led1.set_high(),
+            2 => led2.set_high(),
+            3 => led3.set_high(),
+            4 => led4.set_high(),
+            5 => led6.set_high(),
+            6=>led6.set_high(),
+            7=>led7.set_high(),
+            8=>led8.set_high(),
+            9=>led9.set_high(),
+            10=>led10.set_high(),
         }
-    }
-    fn TakeLow(LEDLine: u8) {
+    };
+    let TakeLow = |LEDLine: u8| {
         match LEDLine {
-            1 => led1.set_low();
-            2 => led2.set_low();
-            3 => led3.set_low();
-            4 => led4.set_low();
-            5 => led5.set_low();
-            6 => led6.set_low();
-            7 => led7.set_low();
-            8 => led8.set_low();
-            9 => led9.set_low();
-            10 => led10.set_low();
+            1 => led1.set_low(),
+            2 => led2.set_low(),
+            3 => led3.set_low(),
+            4 => led4.set_low(),
+            5 => led5.set_low(),
+            6 => led6.set_low(),
+            7 => led7.set_low(),
+            8 => led8.set_low(),
+            9 => led9.set_low(),
+            10 => led10.set_low(),
         }
-    }
-    fn AllLEDSOff() {
+    };
+    let AllLEDsOff = || {
         for i in 1..10 {
-            TakeLow(i)
+            TakeLow(i);
         }
-    }
+    };
 
   PORTD = buttonmask;  // Pull-up resistors for buttons
 
@@ -609,15 +617,16 @@ fn main() -> ! {
   ExtRTC = RTCgetTime();
   // If no RTC is found, no attempt will be made to use it thereafter.
 
-  if (ExtRTC)  // If time is already set from the RTC...
+  if (ExtRTC) {  // If time is already set from the RTC...
     VCRmode = 0;
-
+  }
 
 
 
 loop
 {
-  let mut HighLine:u8, LowLine:u8;
+    let mut HighLine:u8;
+    let mut LowLine:u8;
   let mut PINDcopy:u8;
   let mut RefreshTime = AlignMode + SettingTime + OptionMode;
 
@@ -647,7 +656,7 @@ loop
             if ( AlignMode & 1)  // Odd mode:
             {
               if (AlignRate < 2) {
-                  AlignRate++;
+                  AlignRate+=1;
               }
             }
             else {
@@ -688,21 +697,21 @@ loop
 
             if (SettingTime == 1)
             {
-              HrNow++;
+              HrNow+=1;
                 if (HrNow > 11) {
                     HrNow = 0;
                 }
             }
             if (SettingTime == 2)
             {
-              MinNow++;
+              MinNow+=1;
               if (MinNow > 59) {
                   MinNow = 0;
               }
             }
             if (SettingTime == 3)
             {
-              SecNow++;
+              SecNow+=1;
               if (SecNow > 59) {
                   SecNow = 0;
               }
@@ -710,7 +719,7 @@ loop
           }
           else {
             // Brightness control mode
-            MainBright++;
+            MainBright+=1;
             if (MainBright > 8) {
                 MainBright = 1;
             }
@@ -740,7 +749,7 @@ loop
             if ( AlignMode & 1)  // Odd mode:
             {
               if (AlignRate > -3) {
-                  AlignRate--;
+                  AlignRate-=1;
               }
             }
             else {
@@ -781,7 +790,7 @@ loop
             if (SettingTime == 1)
             {
               if (HrNow > 0) {
-                HrNow--;
+                HrNow-=1;
               }              else {
                   HrNow = 11;
               }
@@ -789,7 +798,7 @@ loop
             if (SettingTime == 2)
             {
                 if (MinNow > 0) {
-                MinNow--;
+                MinNow-=1;
           } else {
                     MinNow = 59;
                 }
@@ -797,7 +806,7 @@ loop
             if (SettingTime == 3)
             {
               if (SecNow > 0) {
-                SecNow--;
+                SecNow-=1;
               } else {
                   SecNow = 59;
               }
@@ -805,7 +814,7 @@ loop
           }
           else {  // Normal brightness adjustment mode
               if (MainBright > 1) {
-              MainBright--;
+              MainBright-=1;
               } else {
                   MainBright = 8;
               }
@@ -829,7 +838,7 @@ loop
       {
         if (AlignMode) {
 
-          AlignMode++;
+          AlignMode+=1;
           if (AlignMode > 6) {
             AlignMode = 1;
           }
@@ -838,7 +847,7 @@ loop
         }
         else if (OptionMode) {
 
-          OptionMode++;
+          OptionMode+=1;
           StartingOption = 0;
 
           if (OptionMode > 5) {
@@ -846,7 +855,7 @@ loop
           }
         }
         else if (SettingTime) {
-          SettingTime++;
+          SettingTime+=1;
           if (SettingTime > 3) {
               SettingTime = 1;
           }
@@ -892,9 +901,9 @@ loop
       HoldAlign = 0;
       FactoryResetDisable = 1;
 
-      if (TimeSinceButton < 250)
-        TimeSinceButton++;
-
+      if (TimeSinceButton < 250) {
+        TimeSinceButton+=1;
+      }
       if (TimeSinceButton == 10)  // 10 s after last button released...
       {
         if (LastSavedBrightness != MainBright)
@@ -910,19 +919,19 @@ loop
 
       if (( PIND & buttonmask) == 128)  // "+" and "-" are pressed down. "Z" is up.
       {
-        HoldAlign++;  // We are holding for alignment mode.
+        HoldAlign+=1;  // We are holding for alignment mode.
         HoldOption = 0;
         HoldTimeSet = 0;
       }
       if (( PIND & buttonmask) == 64)  // "+" and "Z" are pressed down. "-" is up.
       {
-        HoldOption++;  // We are holding for option setting mode.
+          HoldOption+=1;  // We are holding for option setting mode.
         HoldTimeSet = 0;
         HoldAlign = 0;
       }
       if (( PIND & buttonmask) == 96)  // "Z" is pressed down. "+" and "-" are up.
       {
-        HoldTimeSet++;  // We are holding for time setting mode.
+        HoldTimeSet+=1;  // We are holding for time setting mode.
         HoldOption = 0;
         HoldAlign = 0;
       }
@@ -1010,11 +1019,11 @@ loop
     // Note: this section could act funny if you hold the buttons for 256 or more seconds.
     // So... um... don't do that.  :P
 
-    SecNow++;
+    SecNow+=1;
 
     if (SecNow > 59){
       SecNow = 0;
-      MinNow++;
+      MinNow+=1;
 
       if ((SettingTime == 0) && ExtRTC) { // Check value at RTC ONCE PER MINUTE, if enabled.
           RTCgetTime();                    // Do not check RTC time, if we are in time-setting mode.
@@ -1023,7 +1032,7 @@ loop
 
     if (MinNow > 59){
       MinNow = 0;
-      HrNow++;
+      HrNow+=1;
 
       if  (HrNow > 11) {
           HrNow = 0;
@@ -1040,7 +1049,7 @@ loop
 
       if (AlignMode & 1) {  // ODD mode, auto-advances
 
-        byte AlignRateAbs;  // Absolute value of AlignRate
+          let mut AlignRateAbs:u8;  // Absolute value of AlignRate
 
         if (AlignRate >= 0){
           AlignRateAbs = AlignRate + 1;
@@ -1051,9 +1060,9 @@ loop
 
         // Serial.println(AlignRateAbs,DEC);
 
-        AlignLoopCount++;
+        AlignLoopCount+=1;
 
-        byte ScaleRate;
+        let mut ScaleRate: u8;
         if (AlignRateAbs > 2) {
           ScaleRate = 10;
         } else if (AlignRateAbs == 2) {
@@ -1089,29 +1098,29 @@ loop
 const StartOptTimeLimit: u8 = 30;
         if (StartingOption < StartOptTimeLimit) {
 
-        AlignLoopCount++;  // Borrowing a counter variable...
+        AlignLoopCount+=1;  // Borrowing a counter variable...
 
         if (AlignLoopCount > 3) {
           AlignLoopCount = 0;
-          StartingOption++;
+          StartingOption+=1;
 
           if (OptionMode == 1)  // Red (upper) ring color balance
           {
-            HrDisp++;
+            HrDisp+=1;
             if (HrDisp > 11) {
                 HrDisp = 0;
             }
           }
           if (OptionMode == 2)  // Green (middle) ring color balance
           {
-            MinDisp++;
+            MinDisp+=1;
             if (MinDisp > 29) {
                 MinDisp = 0;
             }
           }
           if (OptionMode == 3)  // Blue (lower) ring color balance
           {
-            SecDisp++;
+            SecDisp+=1;
             if (SecDisp > 29) {
                 SecDisp = 0;
             }
@@ -1127,7 +1136,7 @@ const StartOptTimeLimit: u8 = 30;
 
         if (OptionMode == 4)
         {
-          MinDisp++;
+          MinDisp+=1;
           if (MinDisp > 29) {
               MinDisp = 0;
           }
@@ -1288,7 +1297,7 @@ const StartOptTimeLimit: u8 = 30;
 
   }
 
-  byte tempbright = MainBright;
+  let mut tempbright:u8 = MainBright;
 
   if (SleepMode) {
       tempbright = 0;
@@ -1310,7 +1319,7 @@ const StartOptTimeLimit: u8 = 30;
   // unsigned long  temp = millis();
 
   // This is the loop where we actually light up the LEDs:
-  byte i = 0;
+  let mut i:u8 = 0;
   while (i < 128)  // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
   {
 
@@ -1362,7 +1371,7 @@ const StartOptTimeLimit: u8 = 30;
       delayTime((8-MainBright)<<5);
     }
 
-    i++;
+    i+=1;
   }
 
   /*
@@ -1383,8 +1392,7 @@ const StartOptTimeLimit: u8 = 30;
     }
 
     // Print confirmation
-    Serial.println("Clock synced at: ");
-    Serial.println(now(),DEC);
+      ufmt::uwriteln!(s_tx, "Clock synced at: {}", now());
 
     if(timeStatus() == timeSet) {  // update clocks if time has been synced
 
