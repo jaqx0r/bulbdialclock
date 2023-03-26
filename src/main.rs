@@ -386,53 +386,48 @@ fn normalFades() {
 }
 
 
-fn RTCsetTime(hourIn:u8, minuteIn:u8, secondIn:u8)
-{
-  Wire.beginTransmission(104);  // 104 is DS3231 device address
-  Wire.write((byte)0);  // start at register 0
+// 104 is the DS3231 RTC device address
+const RTC_ADDRESS: u8 = 104;
 
+fn RTCsetTime(i2c: &mut arduino_hal:I2c, hourIn:u8, minuteIn:u8, secondIn:u8)
+{
   let ts:u8 = secondIn / 10;
     let os:u8 = secondIn - ts*10;
-  let ss:u8 = (ts << 4) + os;
-
-  Wire.write(ss);  // Send seconds as BCD
+    let ss:u8 = (ts << 4) + os;
 
   let tm:u8 = minuteIn /10;
   let om:u8 = minuteIn - tm*10;
   let sm:u8 = (tm << 4 ) | om;
 
-  Wire.write(sm);  // Send minutes as BCD
-
   let th:u8 = hourIn /10;
   let oh:u8 = hourIn - th*10;
-  let sh:u8 = (th << 4 ) | oh;
+    let sh:u8 = (th << 4 ) | oh;
 
-  Wire.write(sh);  // Send hours as BCD
-
-  Wire.endTransmission();
-
+    let buf: [u8; 3] = [ss, sm, sh];
+    i2c.write(RTC_ADDRESS, &buf).unwrap(); // TODO handle result.
 }
 
 fn RTCgetTime() -> u8
 { // Read out time from RTC module, if present
   // send request to receive data starting at register 0
 
-  let mut status:u8 = 0;
-  Wire.beginTransmission(104);  // 104 is DS3231 device address
-  Wire.write((byte)0);  // start at register 0
-  Wire.endTransmission();
-  Wire.requestFrom(104, 3);  // request three bytes (seconds, minutes, hours)
+    let mut status:u8 = 0;
+
+    let mut buf: [u8; 3] = [0,0,0];
+    match i2c.read(RTC_ADDRESS, &buf) {
+        Err(_) => return 0,
+        Ok(_) => continue,
+    }
 
   let mut seconds:i16, mut minutes:i16, mut hours:i16;
   let mut temptime1:u16, mut temptime2:u16;
   let mut updatetime:u8 = 0;
 
-  while(Wire.available())
   {
     status = 1;
-    seconds = Wire.read();  // get seconds
-    minutes = Wire.read();  // get minutes
-    hours = Wire.read();    // get hours
+    seconds = buf[0];  // get seconds
+    minutes = buf[1];  // get minutes
+    hours = buf[2];    // get hours
   }
 
   // IF time is off by MORE than two seconds, then correct the displayed time.
