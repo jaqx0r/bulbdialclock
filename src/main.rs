@@ -33,8 +33,9 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 
 mod rtc;
-
+mod time;
 use crate::rtc::*;
+use crate::time::*;
 use arduino_hal::prelude::*;
 use core::mem;
 
@@ -1310,7 +1311,7 @@ fn main() -> ! {
             // Print confirmation
             ufmt::uwriteln!(s_tx, "Clock synced at: {}", now());
 
-            if (timeStatus() == timeSet) {
+            if (timeStatus() == timeStatus_t::timeSet) {
                 // update clocks if time has been synced
 
                 if (prevtime != now()) {

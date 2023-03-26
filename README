@@ -14,3 +14,6 @@ https://docs.arduino.cc/hacking/software/PortManipulation and
 https://docs.arduino.cc/hacking/hardware/PinMapping168
 
 `millis()` in rtc.rs from https://blog.rahix.de/005-avr-hal-millis/
+
+Arduino Time.h from https://github.com/michaelmargolis/arduino_time/blob/master/Time/
+
