@@ -35,6 +35,8 @@
          non_camel_case_types,
          non_snake_case)]
 
+use crate::time::*;
+mod time;
 use core::mem;
 use arduino_hal::prelude::*;
 
@@ -545,6 +547,8 @@ fn main() -> ! {
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 19200);
 
+    init_tc0(dp.TC0);
+
     //setTime(0);
     
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
@@ -621,6 +625,7 @@ fn main() -> ! {
     VCRmode = 0;
   }
 
+  unsafe { avr_device::interrupt::enable() };
 
 
 loop
