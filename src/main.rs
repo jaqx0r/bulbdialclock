@@ -110,26 +110,29 @@ fn getPCtime(s_rx: &mut SerialReader) -> bool {
 }
 
 
-void printDigits(byte digits){
-  // utility function for digital clock display: prints preceding colon and leading 0
-  Serial.print(":");
-  if(digits < 10)
-    Serial.print('0');
-  Serial.print(digits,DEC);
+type SerialWriter = arduino_hal::hal::usart::UsartWriter<
+    arduino_hal::pac::USART0,
+    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Input, arduino_hal::hal::port::PD0>,
+    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Output, arduino_hal::hal::port::PD1>,
+    arduino_hal::clock::MHz16,
+>;
+
+fn printDigits(s_tx: &mut SerialWriter, digits: u8){
+    // utility function for digital clock display: prints preceding colon and leading 0
+    ufmt::uwrite!(s_tx, ":").unwrap();
+  if(digits < 10) {
+      ufmt::uwrite!(s_tx, '0').unwrap();
+  }
+  ufmt::uwrite!(s_tx, "%d", digits).unwrap();
 }
 
 
-void digitalClockDisplay(){
+fn digitalClockDisplay(s_tx: &mut SerialWriter) {
   // digital clock display of current date and time
-  Serial.print(hour(),DEC);
-  printDigits(minute());
-  printDigits(second());
-  Serial.print(" ");
-  Serial.print(dayStr(weekday()));
-  Serial.print(" ");
-  Serial.print(monthStr(month()));
-  Serial.print(" ");
-  Serial.println(day(),DEC);
+    ufmt::uwrite!(s_tx, "%d", hour());
+  printDigits(s_tx, minute());
+  printDigits(s_tx, second());
+    ufmt::uwriteln(s_tx, " %s %s %d", weekday(), month, day()).unwrap();
 }
 
 const SecHi: [u8: 30] = [
@@ -1392,7 +1395,7 @@ const StartOptTimeLimit: u8 = 30;
         }
 
         timeStatus();  // refresh the Date and time properties
-        digitalClockDisplay( );  // update digital clock
+        digitalClockDisplay(s_tx);  // update digital clock
         prevtime = now();
       }
     }
