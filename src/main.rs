@@ -79,23 +79,34 @@ fn delayTime(time: u8) {
     }
 }
 
+type SerialReader = arduino_hal::hal::usart::UsartReader<
+    arduino_hal::pac::USART0,
+    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Input, arduino_hal::hal::port::PD0>,
+    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Output, arduino_hal::hal::port::PD1>,
+    arduino_hal::clock::MHz16,
+>;
 
-boolean getPCtime() {
-  // if time sync available from serial port, update time and return true
-  while(Serial.available() >=  TIME_MSG_LEN ){  // time message consists of a header and ten ascii digits
-    if( Serial.read() == TIME_HEADER ) {
-      time_t pctime = 0;
-      for(int i=0; i < TIME_MSG_LEN -1; i++){
-        char c= Serial.read();
-        if( c >= '0' && c <= '9'){
-          pctime = (10 * pctime) + (c - '0') ;  // convert digits to a number
+fn getPCtime(s_rx: &mut SerialReader) -> bool {
+    // if time sync available from serial port, update time and return true
+    match s_rx.read() {
+        Ok(TIME_HEADER)=> {
+            // read unix time from serial port, header byte and ten ascii digits
+            let mut pctime: u32 = 0;
+            for _ in 0..TIME_MSG_LEN {
+                match s_rx.read() {
+                    Ok(c) => {
+                        if let Some(d) = char::from(c).to_digit(10) {
+                            pctime = (10 * pctime) + d;
+                        }
+                        //setTime(pctime)
+                        return true;
+                    }
+                    _ => return false,
+                };
+            }
         }
-      }
-      setTime(pctime);  // Sync Arduino clock to the time received on the serial port
-      return true;  // return true if time message received on the serial port
+        _ => return false,
     }
-  }
-  return false;  // if no message return false
 }
 
 
@@ -1357,7 +1368,7 @@ const StartOptTimeLimit: u8 = 30;
    */
 
   // Can this sync be tried only once per second?
-  if( getPCtime()) {  // try to get time sync from pc
+  if( getPCtime(s_rx)) {  // try to get time sync from pc
 
     // Set time to that given from PC.
     MinNow = minute();
