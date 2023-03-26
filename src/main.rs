@@ -882,7 +882,7 @@ fn main() -> ! {
                     ApplyDefaults();
                     EESaveSettings();
                     AllLEDsOff(); // Blink LEDs off to indicate restoring data
-                    delay(100);
+                    arduino_hal::delay_ms(100);
                 } else {
                     if (AlignMode) {
                         AlignMode = 0;
@@ -904,7 +904,7 @@ fn main() -> ! {
                     OptionMode = 0;
                     EESaveSettings(); // Save options if exiting option mode!
                     AllLEDsOff(); // Blink LEDs off to indicate saving data
-                    delay(100);
+                    arduino_hal::delay_ms(100);
                 } else {
                     OptionMode = 1;
                     StartingOption = 0;
@@ -920,13 +920,13 @@ fn main() -> ! {
                     if (SettingTime && ExtRTC) {
                         RTCsetTime(HrNow, MinNow, SecNow);
                         AllLEDsOff(); // Blink LEDs off to indicate saving time
-                        delay(100);
+                        arduino_hal::delay_ms(100);
                     }
 
                     if (OptionMode) {
                         EESaveSettings(); // Save options if exiting option mode!
                         AllLEDsOff(); // Blink LEDs off to indicate saving data
-                        delay(100);
+                        arduino_hal::delay_ms(100);
                     }
 
                     SettingTime = 0;
