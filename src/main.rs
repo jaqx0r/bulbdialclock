@@ -32,8 +32,9 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_main]
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 
-use crate::time::*;
-mod time;
+mod rtc;
+
+use crate::rtc::*;
 use arduino_hal::prelude::*;
 use core::mem;
 
