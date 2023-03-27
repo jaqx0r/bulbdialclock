@@ -39,6 +39,7 @@ use crate::rtc::*;
 use crate::time::*;
 use arduino_hal::prelude::*;
 use core::mem;
+use panic_abort as _;
 
 /*
 EEPROM variables that are saved:  7
