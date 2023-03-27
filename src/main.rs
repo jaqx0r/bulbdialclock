@@ -423,9 +423,8 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
     let mut status: u8 = 0;
 
     let mut buf: [u8; 3] = [0, 0, 0];
-    match i2c.read(RTC_ADDRESS, &buf) {
-        Err(_) => return 0,
-        Ok(_) => continue,
+    if let Err(_) = i2c.read(RTC_ADDRESS, &buf) {
+        return 0;
     }
 
     let mut seconds: i16;
