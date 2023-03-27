@@ -176,7 +176,6 @@ static mut MinBright: u8 = 63;
 static mut SecBright: u8 = 63;
 static mut MainBright: u8 = 8; // 8 is maximum value.
 
-static mut LastTime: u32 = mem::MaybeUninit::<u32>::uninit();
 static mut TimeNow: u32 = mem::MaybeUninit::<u32>::uninit();
 static mut TimeSinceButton: u8 = 0;
 static mut LastSavedBrightness: u8 = mem::MaybeUninit::<u8>::uninit();
@@ -210,7 +209,6 @@ static mut MomentaryOverrideMinus: u8 = 0;
 static mut MomentaryOverrideZ: u8 = 0;
 
 static mut prevtime: u32 = mem::MaybeUninit::<u32>::uninit();
-static mut millisCopy: u32 = mem::MaybeUninit::<u32>::uninit();
 
 static mut SecNext: u8 = mem::MaybeUninit::<u8>::uninit();
 static mut MinNext: u8 = mem::MaybeUninit::<u8>::uninit();
@@ -367,7 +365,7 @@ fn normalTimeDisplay() {
     }
 }
 
-fn normalFades() {
+fn normalFades(millisCopy: u32, LastTime: u32) {
     if (FadeMode != 0) {
         // Normal time display
         if (SecNow & 1 != 0)
@@ -622,6 +620,8 @@ fn main() -> ! {
         VCRmode = 0;
     }
 
+    let mut LastTime: u32 = 0;
+
     unsafe { avr_device::interrupt::enable() };
 
     loop {
@@ -829,7 +829,7 @@ fn main() -> ! {
         }
 
         (plus_last, minus_last, z_last) = (plus_copy, minus_copy, z_copy);
-        millisCopy = millis();
+        let millisCopy = millis();
 
         // The next if statement detects and deals with the millis() rollover.
         // This introduces an error of up to  1 s, about every 50 days.
@@ -1222,12 +1222,12 @@ fn main() -> ! {
                     {
                         HrFade1 = 0;
                     } else {
-                        normalFades();
+                        normalFades(millisCopy, LastTime);
                     }
                 }
             }
         } else {
-            normalFades();
+            normalFades(millisCopy, LastTime);
         }
 
         let mut tempbright: u8 = MainBright;
