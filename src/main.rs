@@ -43,7 +43,6 @@ mod time;
 use crate::rtc::*;
 use crate::time::*;
 use arduino_hal::prelude::*;
-use core::mem;
 use panic_abort as _;
 
 /*
@@ -174,7 +173,7 @@ static mut SecBright: u8 = 63;
 static mut MainBright: u8 = 8; // 8 is maximum value.
 
 static mut TimeSinceButton: u8 = 0;
-static mut LastSavedBrightness: u8 = mem::MaybeUninit::<u8>::uninit();
+static mut LastSavedBrightness: u8 = 0;
 
 // Modes:
 static mut CCW: u8 = 0; // presume clockwise, not counterclockwise
@@ -204,35 +203,36 @@ static mut MomentaryOverridePlus: u8 = 0;
 static mut MomentaryOverrideMinus: u8 = 0;
 static mut MomentaryOverrideZ: u8 = 0;
 
-static mut prevtime: u32 = mem::MaybeUninit::<u32>::uninit();
-
-static mut SecNext: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut MinNext: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut HrNext: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut h0: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut h1: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut h2: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut h3: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut h4: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut h5: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut l0: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut l1: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut l2: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut l3: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut l4: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut l5: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut d0: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut d1: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut d2: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut d3: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut d4: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut d5: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut HrFade1: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut HrFade2: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut MinFade1: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut MinFade2: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut SecFade1: u8 = mem::MaybeUninit::<u8>::uninit();
-static mut SecFade2: u8 = mem::MaybeUninit::<u8>::uninit();
+// Initialised in normalTimeDisplay
+static mut SecNext: u8 = 0;
+static mut MinNext: u8 = 0;
+static mut HrNext: u8 = 0;
+// Initialised at end of RefreshTime conditional
+static mut h0: u8 = 0;
+static mut h1: u8 = 0;
+static mut h2: u8 = 0;
+static mut h3: u8 = 0;
+static mut h4: u8 = 0;
+static mut h5: u8 = 0;
+static mut l0: u8 = 0;
+static mut l1: u8 = 0;
+static mut l2: u8 = 0;
+static mut l3: u8 = 0;
+static mut l4: u8 = 0;
+static mut l5: u8 = 0;
+static mut d0: u8 = 0;
+static mut d1: u8 = 0;
+static mut d2: u8 = 0;
+static mut d3: u8 = 0;
+static mut d4: u8 = 0;
+static mut d5: u8 = 0;
+// Initialised in normalFades or at end of RefreshTime conditional
+static mut HrFade1: u8 = 0;
+static mut HrFade2: u8 = 0;
+static mut MinFade1: u8 = 0;
+static mut MinFade2: u8 = 0;
+static mut SecFade1: u8 = 0;
+static mut SecFade2: u8 = 0;
 
 fn ApplyDefaults() {
     /*
@@ -615,6 +615,7 @@ fn main() -> ! {
     }
 
     let mut LastTime: u32 = 0;
+    let mut prevtime: u32 = 0;
 
     unsafe { avr_device::interrupt::enable() };
 
