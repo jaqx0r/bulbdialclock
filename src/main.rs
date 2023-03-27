@@ -558,6 +558,7 @@ fn main() -> ! {
         8 => led8.set_high(),
         9 => led9.set_high(),
         10 => led10.set_high(),
+        _ => panic!(),
     };
     let TakeLow = |LEDLine: u8| match LEDLine {
         1 => led1.set_low(),
@@ -570,6 +571,7 @@ fn main() -> ! {
         8 => led8.set_low(),
         9 => led9.set_low(),
         10 => led10.set_low(),
+        _ => panic!(),
     };
     let AllLEDsOff = || {
         for i in 1..10 {
