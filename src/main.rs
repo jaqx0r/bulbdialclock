@@ -367,7 +367,7 @@ fn normalFades(millisCopy: u32, LastTime: u32) {
         if (SecNow & 1 != 0)
         // ODD time
         {
-            SecFade2 = (63 * (millisCopy - LastTime) / 1000);
+            SecFade2 = (63 * (millisCopy - LastTime) / 1000) as u8;
             SecFade1 = 63 - SecFade2;
         }
 
@@ -431,15 +431,15 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
     let mut seconds: i16;
     let mut minutes: i16;
     let mut hours: i16;
-    let mut temptime1: u16;
-    let mut temptime2: u16;
+    let mut temptime1: i16;
+    let mut temptime2: i16;
     let mut updatetime: u8 = 0;
 
     {
         status = 1;
-        seconds = buf[0]; // get seconds
-        minutes = buf[1]; // get minutes
-        hours = buf[2]; // get hours
+        seconds = buf[0] as i16; // get seconds
+        minutes = buf[1] as i16; // get minutes
+        hours = buf[2] as i16; // get hours
     }
 
     // IF time is off by MORE than two seconds, then correct the displayed time.
@@ -460,7 +460,7 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
 
         if ((minutes != 0) && (MinNow != 0)) {
             temptime1 = 3600 * hours + 60 * minutes + seconds; // Values read from RTC
-            temptime2 = 3600 * HrNow + 60 * MinNow + SecNow; // Internally stored time estimate.
+            temptime2 = 3600 * HrNow as i16 + 60 * MinNow as i16 + SecNow as i16; // Internally stored time estimate.
 
             if (temptime1 > temptime2) {
                 if ((temptime1 - temptime2) > 2) {
@@ -477,9 +477,9 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
             updatetime = 1;
         }
         if (updatetime != 0) {
-            SecNow = seconds;
-            MinNow = minutes;
-            HrNow = hours;
+            SecNow = seconds as u8;
+            MinNow = minutes as u8;
+            HrNow = hours as u8;
 
             // Convert 24-hour mode to 12-hour mode
             if (HrNow > 11) {
@@ -991,9 +991,9 @@ fn main() -> ! {
                     let mut AlignRateAbs: u8; // Absolute value of AlignRate
 
                     if (AlignRate >= 0) {
-                        AlignRateAbs = AlignRate + 1;
+                        AlignRateAbs = (AlignRate + 1) as u8;
                     } else {
-                        AlignRateAbs = -AlignRate;
+                        AlignRateAbs = (-AlignRate) as u8;
                     }
 
                     // Serial.println(AlignRateAbs,DEC);
@@ -1312,9 +1312,9 @@ fn main() -> ! {
             // try to get time sync from pc
 
             // Set time to that given from PC.
-            MinNow = minute();
-            SecNow = second();
-            HrNow = hour();
+            MinNow = minute() as u8;
+            SecNow = second() as u8;
+            HrNow = hour() as u8;
 
             if (HrNow > 11) {
                 // Convert 24-hour mode to 12-hour mode
