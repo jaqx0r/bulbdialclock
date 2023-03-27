@@ -106,7 +106,7 @@ fn getPCtime(s_rx: &mut SerialReader) -> bool {
                         if let Some(d) = char::from(c).to_digit(10) {
                             pctime = (10 * pctime) + d;
                         }
-                        //setTime(pctime)
+                        setTime(pctime);
                         return true;
                     }
                     _ => return false,
@@ -532,7 +532,7 @@ fn main() -> ! {
 
     init_tc0(dp.TC0);
 
-    //setTime(0);
+    setTime(0);
 
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
