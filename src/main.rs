@@ -174,8 +174,6 @@ static mut TimeNow: u32 = mem::MaybeUninit::<u32>::uninit();
 static mut TimeSinceButton: u8 = 0;
 static mut LastSavedBrightness: u8 = mem::MaybeUninit::<u8>::uninit();
 
-static mut PINDLast: u8 = mem::MaybeUninit::<u8>::uninit();
-
 // Modes:
 static mut CCW: u8 = 0; // presume clockwise, not counterclockwise
 static mut ExtRTC: u8 = 0;
@@ -579,14 +577,20 @@ fn main() -> ! {
         }
     };
 
-    PORTD = buttonmask; // Pull-up resistors for buttons
+    // Pull-up resistors for buttons
+    let (plus, minus, z) = (
+        pins.d5.into_pull_up_input(),
+        pins.d6.into_pull_up_input(),
+        pins.d7.into_pull_up_input(),
+    );
 
     TimeNow = millis();
 
     let mut ep = arduino_hal::pac::EEPROM::new(dp.EEPROM);
     EEReadSettings(ep);
 
-    PINDLast = PIND & buttonmask;
+    // Pull up inputs are HIGH when open, and LOW when pressed.
+    let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
     // ButtonHold = 0;
 
     /*
@@ -617,18 +621,17 @@ fn main() -> ! {
     loop {
         let mut HighLine: u8;
         let mut LowLine: u8;
-        let mut PINDcopy: u8;
         let mut RefreshTime = AlignMode + SettingTime + OptionMode;
 
-        PINDcopy = PIND & buttonmask;
+        let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
 
-        if (PINDcopy != PINDLast)
+        if (plus_copy != plus_last || minus_copy != minus_last || z_copy != z_last)
         // Button change detected
         {
             VCRmode = 0; // End once any buttons have been pressed...
             TimeSinceButton = 0;
 
-            if ((PINDcopy & 32) && ((PINDLast & 32) == 0)) {
+            if (!plus_copy && plus_last) {
                 // "+" Button was pressed previously, and was just released!
 
                 if (MomentaryOverridePlus) {
@@ -700,7 +703,7 @@ fn main() -> ! {
                 }
             }
 
-            if ((PINDcopy & 64) && ((PINDLast & 64) == 0)) {
+            if (!minus_copy && minus_last) {
                 // "-" Button was pressed and just released!
 
                 VCRmode = 0; // End once any buttons have been pressed...
@@ -779,7 +782,7 @@ fn main() -> ! {
                 }
             }
 
-            if ((PINDcopy & 128) && ((PINDLast & 128) == 0)) {
+            if (!z_copy && z_last) {
                 // "Z" Button was pressed and just released!
 
                 VCRmode = 0; // End once any buttons have been pressed...
@@ -819,7 +822,7 @@ fn main() -> ! {
             }
         }
 
-        PINDLast = PINDcopy;
+        (plus_last, minus_last, z_last) = (plus_copy, minus_copy, z_copy);
         millisCopy = millis();
 
         // The next if statement detects and deals with the millis() rollover.
@@ -837,7 +840,7 @@ fn main() -> ! {
 
             // Check to see if any buttons are being held down:
 
-            if ((PIND & buttonmask) == buttonmask) {
+            if (plus.is_high() & minus.is_high() && z.is_high()) {
                 // No buttons are pressed.
                 // Reset the variables that check to see if buttons are being held down.
 
@@ -859,21 +862,21 @@ fn main() -> ! {
             } else {
                 // Note which buttons are being held down
 
-                if ((PIND & buttonmask) == 128)
+                if (plus.is_low() & minus.is_low())
                 // "+" and "-" are pressed down. "Z" is up.
                 {
                     HoldAlign += 1; // We are holding for alignment mode.
                     HoldOption = 0;
                     HoldTimeSet = 0;
                 }
-                if ((PIND & buttonmask) == 64)
+                if (plus.is_low() & z.is_low())
                 // "+" and "Z" are pressed down. "-" is up.
                 {
                     HoldOption += 1; // We are holding for option setting mode.
                     HoldTimeSet = 0;
                     HoldAlign = 0;
                 }
-                if ((PIND & buttonmask) == 96)
+                if (z.is_low())
                 // "Z" is pressed down. "+" and "-" are up.
                 {
                     HoldTimeSet += 1; // We are holding for time setting mode.
