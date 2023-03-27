@@ -108,6 +108,7 @@ fn getPCtime(s_rx: &mut SerialReader) -> bool {
                     _ => return false,
                 };
             }
+            return false;
         }
         _ => return false,
     }
