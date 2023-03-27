@@ -1122,23 +1122,23 @@ fn main() -> ! {
                 // Serial.println(h3,DEC);
             }
 
-            h0 = HrHi[h3];
-            l0 = HrLo[h3];
+            h0 = HrHi[h3 as usize];
+            l0 = HrLo[h3 as usize];
 
-            h1 = HrHi[l3];
-            l1 = HrLo[l3];
+            h1 = HrHi[l3 as usize];
+            l1 = HrLo[l3 as usize];
 
-            h2 = MinHi[h4];
-            l2 = MinLo[h4];
+            h2 = MinHi[h4 as usize];
+            l2 = MinLo[h4 as usize];
 
-            h3 = MinHi[l4];
-            l3 = MinLo[l4];
+            h3 = MinHi[l4 as usize];
+            l3 = MinLo[l4 as usize];
 
-            h4 = SecHi[h5];
-            l4 = SecLo[h5];
+            h4 = SecHi[h5 as usize];
+            l4 = SecLo[h5 as usize];
 
-            h5 = SecHi[l5];
-            l5 = SecLo[l5];
+            h5 = SecHi[l5 as usize];
+            l5 = SecLo[l5 as usize];
         }
 
         SecFade2 = 0;
