@@ -428,8 +428,6 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
     let mut seconds: i16;
     let mut minutes: i16;
     let mut hours: i16;
-    let mut temptime1: i16;
-    let mut temptime2: i16;
     let mut updatetime: u8 = 0;
 
     {
@@ -454,8 +452,8 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
     // Serial.print(hours); Serial.print(":"); Serial.print(minutes); Serial.print(":"); Serial.println(seconds);
 
     if ((minutes != 0) && (MinNow != 0)) {
-        temptime1 = 3600 * hours + 60 * minutes + seconds; // Values read from RTC
-        temptime2 = 3600 * HrNow as i16 + 60 * MinNow as i16 + SecNow as i16; // Internally stored time estimate.
+        let temptime1 = 3600 * hours + 60 * minutes + seconds; // Values read from RTC
+        let temptime2 = 3600 * HrNow as i16 + 60 * MinNow as i16 + SecNow as i16; // Internally stored time estimate.
 
         if (temptime1 > temptime2) {
             if ((temptime1 - temptime2) > 2) {
