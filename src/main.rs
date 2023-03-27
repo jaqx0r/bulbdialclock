@@ -324,7 +324,7 @@ fn EESaveSettings(eeprom: &mut arduino_hal::Eeprom) {
     LastSavedBrightness = MainBright;
 
     // Optional: Blink LEDs off to indicate when we're writing to the EEPROM
-    // AllLEDsOff();
+    // AllLEDsOff!();
     // delay(100);
 }
 
@@ -527,48 +527,36 @@ fn main() -> ! {
 
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
-    let led1 = pins.d10.into_output(); // PB2
-    let led2 = pins.a0.into_output(); // PC0
-    let led3 = pins.a1.into_output(); // PC1
-    let led4 = pins.a2.into_output(); // PC2
-    let led5 = pins.a3.into_output(); // PC3
-    let led6 = pins.d4.into_output(); // PD4
-    let led7 = pins.d2.into_output(); // PD2
-    let led8 = pins.d8.into_output(); // PB0
-    let led9 = pins.d3.into_output(); // PD3
-    let led10 = pins.d9.into_output(); // PB1
+    let mut leds = [
+        pins.d10.into_output().downgrade(), // PB2
+        pins.a0.into_output().downgrade(),  // PC0
+        pins.a1.into_output().downgrade(),  // PC1
+        pins.a2.into_output().downgrade(),  // PC2
+        pins.a3.into_output().downgrade(),  // PC3
+        pins.d4.into_output().downgrade(),  // PD4
+        pins.d2.into_output().downgrade(),  // PD2
+        pins.d8.into_output().downgrade(),  // PB0
+        pins.d3.into_output().downgrade(),  // PD3
+        pins.d9.into_output().downgrade(),  // PB1
+    ];
 
-    let TakeHigh = |LEDLine: u8| match LEDLine {
-        1 => led1.set_high(),
-        2 => led2.set_high(),
-        3 => led3.set_high(),
-        4 => led4.set_high(),
-        5 => led6.set_high(),
-        6 => led6.set_high(),
-        7 => led7.set_high(),
-        8 => led8.set_high(),
-        9 => led9.set_high(),
-        10 => led10.set_high(),
-        _ => panic!(),
-    };
-    let TakeLow = |LEDLine: u8| match LEDLine {
-        1 => led1.set_low(),
-        2 => led2.set_low(),
-        3 => led3.set_low(),
-        4 => led4.set_low(),
-        5 => led5.set_low(),
-        6 => led6.set_low(),
-        7 => led7.set_low(),
-        8 => led8.set_low(),
-        9 => led9.set_low(),
-        10 => led10.set_low(),
-        _ => panic!(),
-    };
-    let AllLEDsOff = || {
-        for i in 1..10 {
-            TakeLow(i);
-        }
-    };
+    macro_rules! TakeHigh {
+        ($led:expr) => {{
+            leds[$led as usize].set_high();
+        }};
+    }
+    macro_rules! TakeLow {
+        ($led:expr) => {{
+            leds[$led as usize].set_low();
+        }};
+    }
+    macro_rules! AllLEDsOff {
+        () => {{
+            for led in leds.iter_mut() {
+                led.set_low();
+            }
+        }};
+    }
 
     // Pull-up resistors for buttons
     let (plus, minus, z) = (
@@ -888,7 +876,7 @@ fn main() -> ! {
                 if (FactoryResetDisable == 0) {
                     ApplyDefaults();
                     EESaveSettings(&mut ep);
-                    AllLEDsOff(); // Blink LEDs off to indicate restoring data
+                    AllLEDsOff!(); // Blink LEDs off to indicate restoring data
                     arduino_hal::delay_ms(100);
                 } else {
                     if (AlignMode != 0) {
@@ -910,7 +898,7 @@ fn main() -> ! {
                 if (OptionMode != 0) {
                     OptionMode = 0;
                     EESaveSettings(&mut ep); // Save options if exiting option mode!
-                    AllLEDsOff(); // Blink LEDs off to indicate saving data
+                    AllLEDsOff!(); // Blink LEDs off to indicate saving data
                     arduino_hal::delay_ms(100);
                 } else {
                     OptionMode = 1;
@@ -926,13 +914,13 @@ fn main() -> ! {
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
                     if (SettingTime != 0 && ExtRTC != 0) {
                         RTCsetTime(&mut i2c, HrNow, MinNow, SecNow);
-                        AllLEDsOff(); // Blink LEDs off to indicate saving time
+                        AllLEDsOff!(); // Blink LEDs off to indicate saving time
                         arduino_hal::delay_ms(100);
                     }
 
                     if (OptionMode != 0) {
                         EESaveSettings(&mut ep); // Save options if exiting option mode!
-                        AllLEDsOff(); // Blink LEDs off to indicate saving data
+                        AllLEDsOff!(); // Blink LEDs off to indicate saving data
                         arduino_hal::delay_ms(100);
                     }
 
@@ -1243,45 +1231,45 @@ fn main() -> ! {
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
         {
             if (d0 > 0) {
-                TakeHigh(h0);
-                TakeLow(l0);
+                TakeHigh!(h0);
+                TakeLow!(l0);
                 delayTime(d0);
-                AllLEDsOff();
+                AllLEDsOff!();
             }
 
             if (d1 > 0) {
-                TakeHigh(h1);
-                TakeLow(l1);
+                TakeHigh!(h1);
+                TakeLow!(l1);
                 delayTime(d1);
-                AllLEDsOff();
+                AllLEDsOff!();
             }
 
             if (d2 > 0) {
-                TakeHigh(h2);
-                TakeLow(l2);
+                TakeHigh!(h2);
+                TakeLow!(l2);
                 delayTime(d2);
-                AllLEDsOff();
+                AllLEDsOff!();
             }
 
             if (d3 > 0) {
-                TakeHigh(h3);
-                TakeLow(l3);
+                TakeHigh!(h3);
+                TakeLow!(l3);
                 delayTime(d3);
-                AllLEDsOff();
+                AllLEDsOff!();
             }
 
             if (d4 > 0) {
-                TakeHigh(h4);
-                TakeLow(l4);
+                TakeHigh!(h4);
+                TakeLow!(l4);
                 delayTime(d4);
-                AllLEDsOff();
+                AllLEDsOff!();
             }
 
             if (d5 > 0) {
-                TakeHigh(h5);
-                TakeLow(l5);
+                TakeHigh!(h5);
+                TakeLow!(l5);
                 delayTime(d5);
-                AllLEDsOff();
+                AllLEDsOff!();
             }
 
             if (MainBright < 8) {
