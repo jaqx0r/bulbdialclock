@@ -161,7 +161,7 @@ static mut HrDisp: u8 = 0;
 static mut MinDisp: u8 = 0;
 static mut SecDisp: u8 = 0;
 
-const EELength: u8 = 7;
+const EELength: usize = 7;
 static mut EEvalues: [u8; EELength] = [mem::MaybeUninit::<u8>::uninit(); EELength];
 
 // Variables to store brightness of the three LED rings.
