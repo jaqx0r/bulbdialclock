@@ -255,50 +255,50 @@ fn ApplyDefaults() {
 
 fn EEReadSettings(eeprom: &mut arduino_hal::Eeprom) {
     // TODO: Detect ANY bad values, not just 255.
-    let mut detectBad: u8 = 0;
+    let mut detectBad: bool = false;
     let mut value: u8 = 255;
 
     value = eeprom.read_byte(0);
     if value > 8 {
         // MainBright has a maximum possible value of 8.
-        detectBad = 1
+        detectBad = true;
     } else {
-        MainBright = value
+        MainBright = value;
     }
     if (value == 0) {
         MainBright = 1; // Turn back on when power goes back on-- don't leave it dark.
     }
     value = eeprom.read_byte(1);
     if (value > 63) {
-        detectBad = 1;
+        detectBad = true;
     } else {
         HourBright = value;
     }
 
     value = eeprom.read_byte(2);
     if (value > 63) {
-        detectBad = 1;
+        detectBad = true;
     } else {
         MinBright = value;
     }
 
     value = eeprom.read_byte(3);
     if (value > 63) {
-        detectBad = 1;
+        detectBad = true;
     } else {
         SecBright = value;
     }
 
     value = eeprom.read_byte(4);
     if (value > 1) {
-        detectBad = 1;
+        detectBad = true;
     } else {
         CCW = value;
     }
 
     value = eeprom.read_byte(5);
     if (value == 255) {
-        detectBad = 1;
+        detectBad = true;
     } else {
         FadeMode = value;
     }
@@ -363,16 +363,16 @@ fn normalTimeDisplay() {
 }
 
 fn normalFades() {
-    if (FadeMode) {
+    if (FadeMode != 0) {
         // Normal time display
-        if (SecNow & 1)
+        if (SecNow & 1 != 0)
         // ODD time
         {
             SecFade2 = (63 * (millisCopy - LastTime) / 1000);
             SecFade1 = 63 - SecFade2;
         }
 
-        if (MinNow & 1)
+        if (MinNow & 1 != 0)
         // ODD time
         {
             if (SecNow == 59) {
@@ -451,7 +451,7 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
 
     // if (ExtRTC) is equivalent to saying,  "if this has run before"
 
-    if (status) {
+    if (status != 0) {
         seconds = (((seconds & 0b11110000) >> 4) * 10 + (seconds & 0b00001111)); // convert BCD to decimal
         minutes = (((minutes & 0b11110000) >> 4) * 10 + (minutes & 0b00001111)); // convert BCD to decimal
         hours = (((hours & 0b00110000) >> 4) * 10 + (hours & 0b00001111)); // convert BCD to decimal (assume 24 hour mode)
@@ -459,7 +459,7 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
         // Optional: report time::
         // Serial.print(hours); Serial.print(":"); Serial.print(minutes); Serial.print(":"); Serial.println(seconds);
 
-        if ((minutes) && (MinNow)) {
+        if ((minutes != 0) && (MinNow != 0)) {
             temptime1 = 3600 * hours + 60 * minutes + seconds; // Values read from RTC
             temptime2 = 3600 * HrNow + 60 * MinNow + SecNow; // Internally stored time estimate.
 
@@ -477,7 +477,7 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
         if (ExtRTC == 0) {
             updatetime = 1;
         }
-        if (updatetime) {
+        if (updatetime != 0) {
             SecNow = seconds;
             MinNow = minutes;
             HrNow = hours;
@@ -612,7 +612,7 @@ fn main() -> ! {
     ExtRTC = RTCgetTime(&mut i2c);
     // If no RTC is found, no attempt will be made to use it thereafter.
 
-    if (ExtRTC) {
+    if (ExtRTC != 0) {
         // If time is already set from the RTC...
         VCRmode = 0;
     }
@@ -635,15 +635,15 @@ fn main() -> ! {
             if (!plus_copy && plus_last) {
                 // "+" Button was pressed previously, and was just released!
 
-                if (MomentaryOverridePlus) {
+                if (MomentaryOverridePlus != 0) {
                     MomentaryOverridePlus = 0;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
-                    if (SleepMode) {
+                    if (SleepMode != 0) {
                         SleepMode = 0;
                     } else {
-                        if (AlignMode) {
-                            if (AlignMode & 1)
+                        if (AlignMode != 0) {
+                            if (AlignMode & 1 != 0)
                             // Odd mode:
                             {
                                 if (AlignRate < 2) {
@@ -652,7 +652,7 @@ fn main() -> ! {
                             } else {
                                 IncrAlignVal(); // Even mode:
                             }
-                        } else if (OptionMode) {
+                        } else if (OptionMode != 0) {
                             if (OptionMode == 1) {
                                 if (HourBright < 62) {
                                     HourBright += 2;
@@ -674,7 +674,7 @@ fn main() -> ! {
                             if (OptionMode == 5) {
                                 FadeMode = 1;
                             }
-                        } else if (SettingTime) {
+                        } else if (SettingTime != 0) {
                             if (SettingTime == 1) {
                                 HrNow += 1;
                                 if (HrNow > 11) {
@@ -710,15 +710,15 @@ fn main() -> ! {
                 VCRmode = 0; // End once any buttons have been pressed...
                 TimeSinceButton = 0;
 
-                if (MomentaryOverrideMinus) {
+                if (MomentaryOverrideMinus != 0) {
                     MomentaryOverrideMinus = 0;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
-                    if (SleepMode) {
+                    if (SleepMode != 0) {
                         SleepMode = 0;
                     } else {
-                        if (AlignMode) {
-                            if (AlignMode & 1)
+                        if (AlignMode != 0) {
+                            if (AlignMode & 1 != 0)
                             // Odd mode:
                             {
                                 if (AlignRate > -3) {
@@ -727,7 +727,7 @@ fn main() -> ! {
                             } else {
                                 DecrAlignVal(); // Even mode:
                             }
-                        } else if (OptionMode) {
+                        } else if (OptionMode != 0) {
                             if (OptionMode == 1) {
                                 if (HourBright > 1) {
                                     HourBright -= 2;
@@ -749,7 +749,7 @@ fn main() -> ! {
                             if (OptionMode == 5) {
                                 FadeMode = 0;
                             }
-                        } else if (SettingTime) {
+                        } else if (SettingTime != 0) {
                             if (SettingTime == 1) {
                                 if (HrNow > 0) {
                                     HrNow -= 1;
@@ -789,25 +789,25 @@ fn main() -> ! {
                 VCRmode = 0; // End once any buttons have been pressed...
                 TimeSinceButton = 0;
 
-                if (MomentaryOverrideZ) {
+                if (MomentaryOverrideZ != 0) {
                     MomentaryOverrideZ = 0;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
-                    if (AlignMode) {
+                    if (AlignMode != 0) {
                         AlignMode += 1;
                         if (AlignMode > 6) {
                             AlignMode = 1;
                         }
                         AlignValue = 0;
                         AlignRate = 2;
-                    } else if (OptionMode) {
+                    } else if (OptionMode != 0) {
                         OptionMode += 1;
                         StartingOption = 0;
 
                         if (OptionMode > 5) {
                             OptionMode = 1;
                         }
-                    } else if (SettingTime) {
+                    } else if (SettingTime != 0) {
                         SettingTime += 1;
                         if (SettingTime > 3) {
                             SettingTime = 1;
@@ -900,7 +900,7 @@ fn main() -> ! {
                     AllLEDsOff(); // Blink LEDs off to indicate restoring data
                     arduino_hal::delay_ms(100);
                 } else {
-                    if (AlignMode) {
+                    if (AlignMode != 0) {
                         AlignMode = 0;
                     } else {
                         AlignMode = 1;
@@ -916,7 +916,7 @@ fn main() -> ! {
                 AlignMode = 0;
                 SettingTime = 0;
 
-                if (OptionMode) {
+                if (OptionMode != 0) {
                     OptionMode = 0;
                     EESaveSettings(&mut ep); // Save options if exiting option mode!
                     AllLEDsOff(); // Blink LEDs off to indicate saving data
@@ -930,16 +930,16 @@ fn main() -> ! {
             if (HoldTimeSet == 3) {
                 MomentaryOverrideZ = 1;
 
-                if (AlignMode + OptionMode + SettingTime) {
+                if (AlignMode + OptionMode + SettingTime != 0) {
                     // If we were in any of these modes, let's now return us to normalcy.
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
-                    if (SettingTime && ExtRTC) {
+                    if (SettingTime != 0 && ExtRTC != 0) {
                         RTCsetTime(&mut i2c, HrNow, MinNow, SecNow);
                         AllLEDsOff(); // Blink LEDs off to indicate saving time
                         arduino_hal::delay_ms(100);
                     }
 
-                    if (OptionMode) {
+                    if (OptionMode != 0) {
                         EESaveSettings(&mut ep); // Save options if exiting option mode!
                         AllLEDsOff(); // Blink LEDs off to indicate saving data
                         arduino_hal::delay_ms(100);
@@ -964,7 +964,7 @@ fn main() -> ! {
                 SecNow = 0;
                 MinNow += 1;
 
-                if ((SettingTime == 0) && ExtRTC) {
+                if ((SettingTime == 0) && ExtRTC != 0) {
                     // Check value at RTC ONCE PER MINUTE, if enabled.
                     RTCgetTime(&mut i2c); // Do not check RTC time, if we are in time-setting mode.
                 }
@@ -981,11 +981,11 @@ fn main() -> ! {
 
             RefreshTime = 1;
         }
-        if (RefreshTime) {
+        if (RefreshTime != 0) {
             // Calculate which LEDs to light up to give the correct shadows:
 
-            if (AlignMode) {
-                if (AlignMode & 1) {
+            if (AlignMode != 0) {
+                if (AlignMode & 1 != 0) {
                     // ODD mode, auto-advances
 
                     let mut AlignRateAbs: u8; // Absolute value of AlignRate
@@ -1030,7 +1030,7 @@ fn main() -> ! {
                 if (HrDisp > 11) {
                     HrDisp -= 12;
                 }
-            } else if (OptionMode) {
+            } else if (OptionMode != 0) {
                 // Option setting mode
 
                 if (StartingOption < StartOptTimeLimit) {
@@ -1096,24 +1096,24 @@ fn main() -> ! {
             h5 = SecDisp;
             l5 = SecNext;
 
-            if (CCW) {
+            if (CCW != 0) {
                 // Counterclockwise
-                if (HrDisp) {
+                if (HrDisp != 0) {
                     h3 = 12 - HrDisp;
                 }
-                if (HrNext) {
+                if (HrNext != 0) {
                     l3 = 12 - HrNext;
                 }
-                if (MinDisp) {
+                if (MinDisp != 0) {
                     h4 = 30 - MinDisp;
                 }
-                if (MinNext) {
+                if (MinNext != 0) {
                     l4 = 30 - MinNext;
                 }
-                if (SecDisp) {
+                if (SecDisp != 0) {
                     h5 = 30 - SecDisp;
                 }
-                if (SecNext) {
+                if (SecNext != 0) {
                     l5 = 30 - SecNext;
                 }
 
@@ -1150,7 +1150,7 @@ fn main() -> ! {
         HrFade2 = 0;
         HrFade1 = 63;
 
-        if (SettingTime)
+        if (SettingTime != 0)
         // i.e., if (SettingTime is nonzero)
         {
             HrFade1 = 5;
@@ -1172,14 +1172,14 @@ fn main() -> ! {
             {
                 SecFade1 = tempfade;
             }
-        } else if (AlignMode + OptionMode)
+        } else if (AlignMode + OptionMode != 0)
         // if either...
         {
             HrFade1 = 0;
             MinFade1 = 0;
             SecFade1 = 0;
 
-            if (AlignMode) {
+            if (AlignMode != 0) {
                 if (AlignMode < 3) {
                     SecFade1 = tempfade;
                 } else if (AlignMode > 4) {
@@ -1227,12 +1227,12 @@ fn main() -> ! {
 
         let mut tempbright: u8 = MainBright;
 
-        if (SleepMode) {
+        if (SleepMode != 0) {
             tempbright = 0;
         }
 
-        if (VCRmode) {
-            if (SecNow & 1) {
+        if (VCRmode != 0) {
+            if (SecNow & 1 != 0) {
                 tempbright = 0;
             }
         }
@@ -1328,7 +1328,7 @@ fn main() -> ! {
                 // update clocks if time has been synced
 
                 if (prevtime != now()) {
-                    if (ExtRTC) {
+                    if (ExtRTC != 0) {
                         RTCsetTime(&mut i2c, HrNow, MinNow, SecNow);
                     }
 
