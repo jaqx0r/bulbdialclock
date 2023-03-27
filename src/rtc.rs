@@ -1,6 +1,5 @@
 // Based on https://blog.rahix.de/005-avr-hal-millis/
 // License assumed to be MIT based on https://github.com/Rahix/avr-hal/blob/main/examples/arduino-uno/src/bin/uno-millis.rsm
-#![feature(abi_avr_interrupt)]
 
 use core::cell;
 

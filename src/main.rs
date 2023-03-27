@@ -30,6 +30,7 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
 #![no_std]
 #![no_main]
+#![feature(abi_avr_interrupt)]
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 
 mod rtc;
