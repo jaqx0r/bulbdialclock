@@ -253,7 +253,7 @@ fn ApplyDefaults() {
     FadeMode = FadeModeDefault;
 }
 
-fn EEReadSettings(eeprom: arduino_hal::Eeprom) {
+fn EEReadSettings(eeprom: arduino_hal::pac::EEPROM) {
     // TODO: Detect ANY bad values, not just 255.
     let mut detectBad: u8 = 0;
     let mut value: u8 = 255;
@@ -310,7 +310,7 @@ fn EEReadSettings(eeprom: arduino_hal::Eeprom) {
     LastSavedBrightness = MainBright;
 }
 
-fn EESaveSettings(eeprom: arduino_hal::Eeprom) {
+fn EESaveSettings(eeprom: arduino_hal::pac::EEPROM) {
     //EEPROM.write(Addr, Value);
 
     // Careful if you use  this function: EEPROM has a limited number of write
@@ -580,7 +580,8 @@ fn main() -> ! {
 
     TimeNow = millis();
 
-    EEReadSettings();
+    let mut ep = arduino_hal::pac::EEPROM::new(dp.EEPROM);
+    EEReadSettings(ep);
 
     PINDLast = PIND & buttonmask;
     // ButtonHold = 0;
