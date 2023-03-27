@@ -536,16 +536,16 @@ fn main() -> ! {
 
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
-    let led1 = pins.pb2.into_output(); // PB2
-    let led2 = pins.pc0.into_output(); // PC0
-    let led3 = pins.pc1.into_output(); // PC1
-    let led4 = pins.pc2.into_output(); // PC2
-    let led5 = pins.pc3.into_output(); // PC3
-    let led6 = pins.pd4.into_output(); // PD4
-    let led7 = pins.pd2.into_output(); // PD2
-    let led8 = pins.pb0.into_output(); // PB0
-    let led9 = pins.pd3.into_output(); // PD3
-    let led10 = pins.pb1.into_output(); // PB1
+    let led1 = pins.d10.into_output(); // PB2
+    let led2 = pins.a0.into_output(); // PC0
+    let led3 = pins.a1.into_output(); // PC1
+    let led4 = pins.a2.into_output(); // PC2
+    let led5 = pins.a3.into_output(); // PC3
+    let led6 = pins.d4.into_output(); // PD4
+    let led7 = pins.d2.into_output(); // PD2
+    let led8 = pins.d8.into_output(); // PB0
+    let led9 = pins.d3.into_output(); // PD3
+    let led10 = pins.d9.into_output(); // PB1
 
     let TakeHigh = |LEDLine: u8| match LEDLine {
         1 => led1.set_high(),
