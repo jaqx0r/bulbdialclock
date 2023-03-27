@@ -132,8 +132,8 @@ fn printDigits(s_tx: &mut SerialWriter, digits: u8) {
 fn digitalClockDisplay(s_tx: &mut SerialWriter) {
     // digital clock display of current date and time
     ufmt::uwrite!(s_tx, "{}", hour());
-    printDigits(s_tx, minute());
-    printDigits(s_tx, second());
+    printDigits(s_tx, minute().try_into().unwrap());
+    printDigits(s_tx, second().try_into().unwrap());
     ufmt::uwriteln!(s_tx, " {} {} {}", weekday(), month(), day()).unwrap();
 }
 
@@ -252,7 +252,7 @@ fn ApplyDefaults() {
     FadeMode = FadeModeDefault;
 }
 
-fn EEReadSettings(eeprom: arduino_hal::pac::EEPROM) {
+fn EEReadSettings(eeprom: &mut arduino_hal::Eeprom) {
     // TODO: Detect ANY bad values, not just 255.
     let mut detectBad: u8 = 0;
     let mut value: u8 = 255;
@@ -309,7 +309,7 @@ fn EEReadSettings(eeprom: arduino_hal::pac::EEPROM) {
     LastSavedBrightness = MainBright;
 }
 
-fn EESaveSettings(eeprom: arduino_hal::pac::EEPROM) {
+fn EESaveSettings(eeprom: &mut arduino_hal::Eeprom) {
     //EEPROM.write(Addr, Value);
 
     // Careful if you use  this function: EEPROM has a limited number of write
@@ -424,7 +424,7 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
     let mut status: u8 = 0;
 
     let mut buf: [u8; 3] = [0, 0, 0];
-    if let Err(_) = i2c.read(RTC_ADDRESS, &buf) {
+    if let Err(_) = i2c.read(RTC_ADDRESS, &mut buf) {
         return 0;
     }
 
@@ -586,8 +586,8 @@ fn main() -> ! {
 
     TimeNow = millis();
 
-    let mut ep = arduino_hal::pac::EEPROM::new(dp.EEPROM);
-    EEReadSettings(ep);
+    let mut ep = arduino_hal::Eeprom::new(dp.EEPROM);
+    EEReadSettings(&mut ep);
 
     // Pull up inputs are HIGH when open, and LOW when pressed.
     let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
@@ -856,7 +856,7 @@ fn main() -> ! {
                 // 10 s after last button released...
                 {
                     if (LastSavedBrightness != MainBright) {
-                        EESaveSettings();
+                        EESaveSettings(&mut ep);
                     }
                 }
             } else {
@@ -895,7 +895,7 @@ fn main() -> ! {
                 // Hold + and - for 3 s AT POWER ON to restore factory settings.
                 if (FactoryResetDisable == 0) {
                     ApplyDefaults();
-                    EESaveSettings();
+                    EESaveSettings(&mut ep);
                     AllLEDsOff(); // Blink LEDs off to indicate restoring data
                     arduino_hal::delay_ms(100);
                 } else {
@@ -917,7 +917,7 @@ fn main() -> ! {
 
                 if (OptionMode) {
                     OptionMode = 0;
-                    EESaveSettings(); // Save options if exiting option mode!
+                    EESaveSettings(&mut ep); // Save options if exiting option mode!
                     AllLEDsOff(); // Blink LEDs off to indicate saving data
                     arduino_hal::delay_ms(100);
                 } else {
@@ -939,7 +939,7 @@ fn main() -> ! {
                     }
 
                     if (OptionMode) {
-                        EESaveSettings(); // Save options if exiting option mode!
+                        EESaveSettings(&mut ep); // Save options if exiting option mode!
                         AllLEDsOff(); // Blink LEDs off to indicate saving data
                         arduino_hal::delay_ms(100);
                     }
@@ -1307,7 +1307,7 @@ fn main() -> ! {
          */
 
         // Can this sync be tried only once per second?
-        if (getPCtime(s_rx)) {
+        if (getPCtime(&mut s_rx)) {
             // try to get time sync from pc
 
             // Set time to that given from PC.
@@ -1328,11 +1328,11 @@ fn main() -> ! {
 
                 if (prevtime != now()) {
                     if (ExtRTC) {
-                        RTCsetTime(HrNow, MinNow, SecNow);
+                        RTCsetTime(&mut i2c, HrNow, MinNow, SecNow);
                     }
 
                     timeStatus(); // refresh the Date and time properties
-                    digitalClockDisplay(s_tx); // update digital clock
+                    digitalClockDisplay(&mut s_tx); // update digital clock
                     prevtime = now();
                 }
             }
