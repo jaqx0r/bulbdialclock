@@ -530,6 +530,7 @@ fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 19200);
+    let (mut s_rx, mut s_tx) = serial.split();
 
     init_tc0(dp.TC0);
 
