@@ -255,9 +255,8 @@ fn ApplyDefaults() {
 fn EEReadSettings(eeprom: &mut arduino_hal::Eeprom) {
     // TODO: Detect ANY bad values, not just 255.
     let mut detectBad: bool = false;
-    let mut value: u8 = 255;
 
-    value = eeprom.read_byte(0);
+    let mut value: u8 = eeprom.read_byte(0);
     if value > 8 {
         // MainBright has a maximum possible value of 8.
         detectBad = true;
@@ -421,8 +420,6 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
     // Read out time from RTC module, if present
     // send request to receive data starting at register 0
 
-    let mut status: u8 = 0;
-
     let mut buf: [u8; 3] = [0, 0, 0];
     if let Err(_) = i2c.read(RTC_ADDRESS, &mut buf) {
         return 0;
@@ -436,7 +433,6 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
     let mut updatetime: u8 = 0;
 
     {
-        status = 1;
         seconds = buf[0] as i16; // get seconds
         minutes = buf[1] as i16; // get minutes
         hours = buf[2] as i16; // get hours
@@ -450,45 +446,42 @@ fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
 
     // if (ExtRTC) is equivalent to saying,  "if this has run before"
 
-    if (status != 0) {
-        seconds = (((seconds & 0b11110000) >> 4) * 10 + (seconds & 0b00001111)); // convert BCD to decimal
-        minutes = (((minutes & 0b11110000) >> 4) * 10 + (minutes & 0b00001111)); // convert BCD to decimal
-        hours = (((hours & 0b00110000) >> 4) * 10 + (hours & 0b00001111)); // convert BCD to decimal (assume 24 hour mode)
+    seconds = (((seconds & 0b11110000) >> 4) * 10 + (seconds & 0b00001111)); // convert BCD to decimal
+    minutes = (((minutes & 0b11110000) >> 4) * 10 + (minutes & 0b00001111)); // convert BCD to decimal
+    hours = (((hours & 0b00110000) >> 4) * 10 + (hours & 0b00001111)); // convert BCD to decimal (assume 24 hour mode)
 
-        // Optional: report time::
-        // Serial.print(hours); Serial.print(":"); Serial.print(minutes); Serial.print(":"); Serial.println(seconds);
+    // Optional: report time::
+    // Serial.print(hours); Serial.print(":"); Serial.print(minutes); Serial.print(":"); Serial.println(seconds);
 
-        if ((minutes != 0) && (MinNow != 0)) {
-            temptime1 = 3600 * hours + 60 * minutes + seconds; // Values read from RTC
-            temptime2 = 3600 * HrNow as i16 + 60 * MinNow as i16 + SecNow as i16; // Internally stored time estimate.
+    if ((minutes != 0) && (MinNow != 0)) {
+        temptime1 = 3600 * hours + 60 * minutes + seconds; // Values read from RTC
+        temptime2 = 3600 * HrNow as i16 + 60 * MinNow as i16 + SecNow as i16; // Internally stored time estimate.
 
-            if (temptime1 > temptime2) {
-                if ((temptime1 - temptime2) > 2) {
-                    updatetime = 1;
-                }
-            } else {
-                if ((temptime2 - temptime1) > 2) {
-                    updatetime = 1;
-                }
+        if (temptime1 > temptime2) {
+            if ((temptime1 - temptime2) > 2) {
+                updatetime = 1;
             }
-        }
-
-        if (ExtRTC == 0) {
-            updatetime = 1;
-        }
-        if (updatetime != 0) {
-            SecNow = seconds as u8;
-            MinNow = minutes as u8;
-            HrNow = hours as u8;
-
-            // Convert 24-hour mode to 12-hour mode
-            if (HrNow > 11) {
-                HrNow -= 12;
+        } else {
+            if ((temptime2 - temptime1) > 2) {
+                updatetime = 1;
             }
         }
     }
 
-    return status;
+    if (ExtRTC == 0) {
+        updatetime = 1;
+    }
+    if (updatetime != 0) {
+        SecNow = seconds as u8;
+        MinNow = minutes as u8;
+        HrNow = hours as u8;
+
+        // Convert 24-hour mode to 12-hour mode
+        if (HrNow > 11) {
+            HrNow -= 12;
+        }
+    }
+    return 1;
 }
 
 fn IncrAlignVal() {
@@ -622,8 +615,6 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
 
     loop {
-        let mut HighLine: u8;
-        let mut LowLine: u8;
         let mut RefreshTime = AlignMode + SettingTime + OptionMode;
 
         let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
