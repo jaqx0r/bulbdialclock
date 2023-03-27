@@ -1,5 +1,6 @@
 // Time functions based on Arduino Time.h
 // https://github.com/michaelmargolis/arduino_time/blob/master/Time/Time.cpp
+// SAFETY: All unsafe global access, just like the original :D
 
 use crate::rtc::millis;
 
@@ -12,7 +13,7 @@ static mut nextSyncTime: u32 = 0;
 
 const syncInterval: u32 = 300;
 
-#[derive(PartialEq,Clone,Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum timeStatus_t {
     timeNotSet,
     timeNeedsSync,
@@ -22,23 +23,23 @@ pub enum timeStatus_t {
 static mut status: timeStatus_t = timeStatus_t::timeNotSet;
 
 pub fn now() -> u32 {
-    while (millis() - prevMillis >= 1000) {
-        sysTime += 1;
-        prevMillis += 1000;
+    while (millis() - unsafe { prevMillis } >= 1000) {
+        unsafe { sysTime += 1 };
+        unsafe { prevMillis += 1000 };
     }
-    sysTime
+    unsafe { sysTime }
 }
 
 pub fn setTime(t: u32) {
-    sysTime = t;
-    nextSyncTime = t + syncInterval;
-    status = timeStatus_t::timeSet;
-    prevMillis = millis();
+    unsafe { sysTime = t };
+    unsafe { nextSyncTime = t + syncInterval };
+    unsafe { status = timeStatus_t::timeSet };
+    unsafe { prevMillis = millis() };
 }
 
 pub fn timeStatus() -> timeStatus_t {
     now(); // required to actually update the status
-    return status;
+    unsafe { status }
 }
 
 // fakes
