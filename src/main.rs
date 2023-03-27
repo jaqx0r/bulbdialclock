@@ -967,26 +967,24 @@ fn main() -> ! {
                 if (AlignMode & 1 != 0) {
                     // ODD mode, auto-advances
 
-                    let mut AlignRateAbs: u8; // Absolute value of AlignRate
-
-                    if (AlignRate >= 0) {
-                        AlignRateAbs = (AlignRate + 1) as u8;
+                    // Absolute value of AlignRate
+                    let AlignRateAbs: u8 = if (AlignRate >= 0) {
+                        (AlignRate + 1) as u8
                     } else {
-                        AlignRateAbs = (-AlignRate) as u8;
-                    }
+                        (-AlignRate) as u8
+                    };
 
                     // Serial.println(AlignRateAbs,DEC);
 
                     AlignLoopCount += 1;
 
-                    let mut ScaleRate: u8;
-                    if (AlignRateAbs > 2) {
-                        ScaleRate = 10;
+                    let ScaleRate: u8 = if (AlignRateAbs > 2) {
+                        10
                     } else if (AlignRateAbs == 2) {
-                        ScaleRate = 50;
+                        50
                     } else {
-                        ScaleRate = 250;
-                    }
+                        250
+                    };
 
                     if (AlignLoopCount > ScaleRate) {
                         AlignLoopCount = 0;
