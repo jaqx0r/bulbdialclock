@@ -523,6 +523,8 @@ fn DecrAlignVal() {
     }
 }
 
+const StartOptTimeLimit: u8 = 30;
+
 #[arduino_hal::entry]
 fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
@@ -1026,7 +1028,6 @@ fn main() -> ! {
             } else if (OptionMode) {
                 // Option setting mode
 
-                const StartOptTimeLimit: u8 = 30;
                 if (StartingOption < StartOptTimeLimit) {
                     AlignLoopCount += 1; // Borrowing a counter variable...
 
