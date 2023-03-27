@@ -29,7 +29,7 @@ pub fn init_tc0(tc0: arduino_hal::pac::TC0) {
     // Use TIMER0_COMPA interrupt as a result.
     tc0.tccr0a.write(|w| w.wgm0().ctc());
     // Set the overflow maximum for CTC mode in OCR0A.
-    tc0.ocr0a.write(|w| unsafe { w.bits(TIMER_COUNTS as u8) });
+    tc0.ocr0a.write(|w| w.bits(TIMER_COUNTS as u8));
     // Configure prescaling in TCCR0B.  Arduino chooses 64, here support more options.
     tc0.tccr0b.write(|w| match PRESCALER {
         8 => w.cs0().prescale_8(),
