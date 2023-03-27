@@ -418,7 +418,7 @@ fn RTCsetTime(i2c: &mut arduino_hal::I2c, hourIn: u8, minuteIn: u8, secondIn: u8
     i2c.write(RTC_ADDRESS, &buf).unwrap(); // TODO handle result.
 }
 
-fn RTCgetTime() -> u8 {
+fn RTCgetTime(i2c: &mut arduino_hal::I2c) -> u8 {
     // Read out time from RTC module, if present
     // send request to receive data starting at register 0
 
@@ -585,8 +585,6 @@ fn main() -> ! {
     PINDLast = PIND & buttonmask;
     // ButtonHold = 0;
 
-    Wire.begin();
-
     /*
     // HIGHLY OPTIONAL: Set jardcoded RTC Time from within the program.
     // Example: Set time to 2:52:45.
@@ -594,8 +592,15 @@ fn main() -> ! {
     RTCsetTime(2,52,45);
     */
 
+    let mut i2c = arduino_hal::I2c::new(
+        dp.TWI,
+        pins.a4.into_pull_up_input(),
+        pins.a5.into_pull_up_input(),
+        50000, // Copied from examples.
+    );
+
     // Check if RTC is available, and use it to set the time if so.
-    ExtRTC = RTCgetTime();
+    ExtRTC = RTCgetTime(&mut i2c);
     // If no RTC is found, no attempt will be made to use it thereafter.
 
     if (ExtRTC) {
@@ -921,7 +926,7 @@ fn main() -> ! {
                     // If we were in any of these modes, let's now return us to normalcy.
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
                     if (SettingTime && ExtRTC) {
-                        RTCsetTime(HrNow, MinNow, SecNow);
+                        RTCsetTime(&mut i2c, HrNow, MinNow, SecNow);
                         AllLEDsOff(); // Blink LEDs off to indicate saving time
                         arduino_hal::delay_ms(100);
                     }
@@ -953,7 +958,7 @@ fn main() -> ! {
 
                 if ((SettingTime == 0) && ExtRTC) {
                     // Check value at RTC ONCE PER MINUTE, if enabled.
-                    RTCgetTime(); // Do not check RTC time, if we are in time-setting mode.
+                    RTCgetTime(&mut i2c); // Do not check RTC time, if we are in time-setting mode.
                 }
             }
 
