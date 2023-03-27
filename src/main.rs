@@ -167,16 +167,12 @@ static mut HrDisp: u8 = 0;
 static mut MinDisp: u8 = 0;
 static mut SecDisp: u8 = 0;
 
-const EELength: usize = 7;
-static mut EEvalues: [u8; EELength] = [mem::MaybeUninit::<u8>::uninit(); EELength];
-
 // Variables to store brightness of the three LED rings.
 static mut HourBright: u8 = 30;
 static mut MinBright: u8 = 63;
 static mut SecBright: u8 = 63;
 static mut MainBright: u8 = 8; // 8 is maximum value.
 
-static mut TimeNow: u32 = mem::MaybeUninit::<u32>::uninit();
 static mut TimeSinceButton: u8 = 0;
 static mut LastSavedBrightness: u8 = mem::MaybeUninit::<u8>::uninit();
 
@@ -587,8 +583,6 @@ fn main() -> ! {
         pins.d6.into_pull_up_input(),
         pins.d7.into_pull_up_input(),
     );
-
-    TimeNow = millis();
 
     let mut ep = arduino_hal::Eeprom::new(dp.EEPROM);
     EEReadSettings(&mut ep);
