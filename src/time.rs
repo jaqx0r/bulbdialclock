@@ -12,6 +12,7 @@ static mut nextSyncTime: u32 = 0;
 
 const syncInterval: u32 = 300;
 
+#[derive(PartialEq)]
 pub enum timeStatus_t {
     timeNotSet,
     timeNeedsSync,
