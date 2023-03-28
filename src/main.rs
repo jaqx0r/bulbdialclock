@@ -71,13 +71,8 @@ const BlueBrightDefault: u8 = 63;
 const CCWDefault: u8 = 0;
 const FadeModeDefault: u8 = 1;
 
-const AlignModeDefault: u8 = 0;
-
 const TIME_MSG_LEN: usize = 11; // time sync to PC is HEADER followed by unix time_t as ten ascii digits
 const TIME_HEADER: u8 = 255; // Header tag for serial time sync message
-
-// The buttons are located at D5, D6, & D7.
-const buttonmask: u8 = 224;
 
 const tempfade: u8 = 63;
 
@@ -136,7 +131,7 @@ fn printDigits(s_tx: &mut SerialWriter, digits: u8) {
 
 fn digitalClockDisplay(s_tx: &mut SerialWriter) {
     // digital clock display of current date and time
-    ufmt::uwrite!(s_tx, "{}", hour());
+    ufmt::uwrite!(s_tx, "{}", hour()).unwrap();
     printDigits(s_tx, minute().try_into().unwrap());
     printDigits(s_tx, second().try_into().unwrap());
     ufmt::uwriteln!(s_tx, " {} {} {}", weekday(), month(), day()).unwrap();
@@ -1385,7 +1380,7 @@ fn main() -> ! {
             }
 
             // Print confirmation
-            ufmt::uwriteln!(s_tx, "Clock synced at: {}", now());
+            ufmt::uwriteln!(s_tx, "Clock synced at: {}", now()).unwrap();
 
             if (timeStatus() == timeStatus_t::timeSet) {
                 // update clocks if time has been synced

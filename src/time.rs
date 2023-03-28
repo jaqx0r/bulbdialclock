@@ -6,7 +6,6 @@ use crate::rtc::millis;
 
 // Arduino time_t is an unsigned long (32 bit)
 // https://forum.arduino.cc/t/combining-int-and-time-t/907182
-static mut cacheTime: u32 = 0;
 static mut sysTime: u32 = 0;
 static mut prevMillis: u32 = 0;
 static mut nextSyncTime: u32 = 0;
@@ -16,7 +15,6 @@ const syncInterval: u32 = 300;
 #[derive(PartialEq, Clone, Copy)]
 pub enum timeStatus_t {
     timeNotSet,
-    timeNeedsSync,
     timeSet,
 }
 
