@@ -31,7 +31,7 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_std]
 #![no_main]
 #![feature(abi_avr_interrupt)]
-#![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
+#![allow(non_camel_case_types, non_snake_case)]
 
 mod rtc;
 mod time;
@@ -57,19 +57,19 @@ EEPROM variables that are saved:  7
 */
 
 // "Factory" default configuration can be configured here:
-const MainBrightDefault: u8 = 8;
+const MAIN_BRIGHT_DEFAULT: u8 = 8;
 
-const RedBrightDefault: u8 = 63; // Use 63, default, for kits with monochrome LEDs!
-const GreenBrightDefault: u8 = 63;
-const BlueBrightDefault: u8 = 63;
+const RED_BRIGHT_DEFAULT: u8 = 63; // Use 63, default, for kits with monochrome LEDs!
+const GREEN_BRIGHT_DEFAULT: u8 = 63;
+const BLUE_BRIGHT_DEFAULT: u8 = 63;
 
-const CCWDefault: u8 = 0;
-const FadeModeDefault: u8 = 1;
+const CCW_DEFAULT: u8 = 0;
+const FADE_MODE_DEFAULT: u8 = 1;
 
 const TIME_MSG_LEN: usize = 11; // time sync to PC is HEADER followed by unix time_t as ten ascii digits
 const TIME_HEADER: u8 = 255; // Header tag for serial time sync message
 
-const tempfade: u8 = 63;
+const TEMP_FADE: u8 = 63;
 
 fn delayTime(time: u8) {
     for _ in 0..time {
@@ -132,22 +132,22 @@ fn digitalClockDisplay(s_tx: &mut SerialWriter) {
     ufmt::uwriteln!(s_tx, " {} {} {}", weekday(), month(), day()).unwrap();
 }
 
-const SecHi: [u8; 30] = [
+const SEC_HI: [u8; 30] = [
     2, 3, 4, 5, 6, 1, 3, 4, 5, 6, 1, 2, 4, 5, 6, 1, 2, 3, 5, 6, 1, 2, 3, 4, 6, 1, 2, 3, 4, 5,
 ];
-const SecLo: [u8; 30] = [
+const SEC_LO: [u8; 30] = [
     1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6,
 ];
 
-const MinHi: [u8; 30] = [
+const MIN_HI: [u8; 30] = [
     1, 7, 1, 8, 1, 9, 2, 7, 2, 8, 2, 9, 3, 7, 3, 8, 3, 9, 4, 7, 4, 8, 4, 9, 5, 7, 5, 8, 5, 9,
 ];
-const MinLo: [u8; 30] = [
+const MIN_LO: [u8; 30] = [
     7, 1, 8, 1, 9, 1, 7, 2, 8, 2, 9, 2, 7, 3, 8, 3, 9, 3, 7, 4, 8, 4, 9, 4, 7, 5, 8, 5, 9, 5,
 ];
 
-const HrHi: [u8; 12] = [10, 1, 2, 10, 10, 6, 3, 10, 10, 4, 5, 10];
-const HrLo: [u8; 12] = [1, 10, 10, 2, 6, 10, 10, 3, 4, 10, 10, 5];
+const HR_HI: [u8; 12] = [10, 1, 2, 10, 10, 6, 3, 10, 10, 4, 5, 10];
+const HR_LO: [u8; 12] = [1, 10, 10, 2, 6, 10, 10, 3, 4, 10, 10, 5];
 
 #[must_use]
 fn ApplyDefaults() -> (u8, u8, u8, u8, u8, u8) {
@@ -161,12 +161,12 @@ fn ApplyDefaults() -> (u8, u8, u8, u8, u8, u8) {
      */
 
     (
-        MainBrightDefault,
-        RedBrightDefault,
-        GreenBrightDefault,
-        BlueBrightDefault,
-        CCWDefault,
-        FadeModeDefault,
+        MAIN_BRIGHT_DEFAULT,
+        RED_BRIGHT_DEFAULT,
+        GREEN_BRIGHT_DEFAULT,
+        BLUE_BRIGHT_DEFAULT,
+        CCW_DEFAULT,
+        FADE_MODE_DEFAULT,
     )
 }
 
@@ -352,9 +352,9 @@ fn normalFades(
     } else {
         // no fading
 
-        HrFade1 = tempfade;
-        MinFade1 = tempfade;
-        SecFade1 = tempfade;
+        HrFade1 = TEMP_FADE;
+        MinFade1 = TEMP_FADE;
+        SecFade1 = TEMP_FADE;
     }
     (SecFade1, SecFade2, MinFade1, MinFade2, HrFade1, HrFade2)
 }
@@ -484,7 +484,7 @@ fn DecrAlignVal(mut AlignValue: u8, AlignMode: u8) -> u8 {
     AlignValue
 }
 
-const StartOptTimeLimit: u8 = 30;
+const START_OPT_TIME_LIMIT: u8 = 30;
 
 #[arduino_hal::entry]
 fn main() -> ! {
@@ -1078,7 +1078,7 @@ fn main() -> ! {
             } else if OptionMode != 0 {
                 // Option setting mode
 
-                if StartingOption < StartOptTimeLimit {
+                if StartingOption < START_OPT_TIME_LIMIT {
                     AlignLoopCount += 1; // Borrowing a counter variable...
 
                     if AlignLoopCount > 3 {
@@ -1112,12 +1112,12 @@ fn main() -> ! {
                         if OptionMode >= 4
                         // CW vs CCW OR fade mode
                         {
-                            StartingOption = StartOptTimeLimit; // Exit this loop
+                            StartingOption = START_OPT_TIME_LIMIT; // Exit this loop
                         }
                     }
                 } // end "if (StartingOption < StartOptTimeLimit){}"
 
-                if StartingOption >= StartOptTimeLimit {
+                if StartingOption >= START_OPT_TIME_LIMIT {
                     if OptionMode == 4 {
                         MinDisp += 1;
                         if MinDisp > 29 {
@@ -1169,23 +1169,23 @@ fn main() -> ! {
                 // Serial.println(h3,DEC);
             }
 
-            h0 = HrHi[h3 as usize];
-            l0 = HrLo[h3 as usize];
+            h0 = HR_HI[h3 as usize];
+            l0 = HR_LO[h3 as usize];
 
-            h1 = HrHi[l3 as usize];
-            l1 = HrLo[l3 as usize];
+            h1 = HR_HI[l3 as usize];
+            l1 = HR_LO[l3 as usize];
 
-            h2 = MinHi[h4 as usize];
-            l2 = MinLo[h4 as usize];
+            h2 = MIN_HI[h4 as usize];
+            l2 = MIN_LO[h4 as usize];
 
-            h3 = MinHi[l4 as usize];
-            l3 = MinLo[l4 as usize];
+            h3 = MIN_HI[l4 as usize];
+            l3 = MIN_LO[l4 as usize];
 
-            h4 = SecHi[h5 as usize];
-            l4 = SecLo[h5 as usize];
+            h4 = SEC_HI[h5 as usize];
+            l4 = SEC_LO[h5 as usize];
 
-            h5 = SecHi[l5 as usize];
-            l5 = SecLo[l5 as usize];
+            h5 = SEC_HI[l5 as usize];
+            l5 = SEC_LO[l5 as usize];
         }
 
         SecFade2 = 0;
@@ -1207,17 +1207,17 @@ fn main() -> ! {
             if SettingTime == 1
             // hours
             {
-                HrFade1 = tempfade;
+                HrFade1 = TEMP_FADE;
             }
             if SettingTime == 2
             // minutes
             {
-                MinFade1 = tempfade;
+                MinFade1 = TEMP_FADE;
             }
             if SettingTime == 3
             // seconds
             {
-                SecFade1 = tempfade;
+                SecFade1 = TEMP_FADE;
             }
         } else if AlignMode + OptionMode != 0
         // if either...
@@ -1228,36 +1228,36 @@ fn main() -> ! {
 
             if AlignMode != 0 {
                 if AlignMode < 3 {
-                    SecFade1 = tempfade;
+                    SecFade1 = TEMP_FADE;
                 } else if AlignMode > 4 {
-                    HrFade1 = tempfade;
+                    HrFade1 = TEMP_FADE;
                 } else {
-                    MinFade1 = tempfade;
+                    MinFade1 = TEMP_FADE;
                 }
             } else {
                 // Must be OptionMode....
-                if StartingOption < StartOptTimeLimit {
+                if StartingOption < START_OPT_TIME_LIMIT {
                     if OptionMode == 1 {
-                        HrFade1 = tempfade;
+                        HrFade1 = TEMP_FADE;
                     }
                     if OptionMode == 2 {
-                        MinFade1 = tempfade;
+                        MinFade1 = TEMP_FADE;
                     }
                     if OptionMode == 3 {
-                        SecFade1 = tempfade;
+                        SecFade1 = TEMP_FADE;
                     }
                     if OptionMode == 4
                     // CW vs CCW
                     {
-                        SecFade1 = tempfade;
-                        MinFade1 = tempfade;
+                        SecFade1 = TEMP_FADE;
+                        MinFade1 = TEMP_FADE;
                     }
                 } else {
                     // No longer in starting mode.
 
-                    HrFade1 = tempfade;
-                    MinFade1 = tempfade;
-                    SecFade1 = tempfade;
+                    HrFade1 = TEMP_FADE;
+                    MinFade1 = TEMP_FADE;
+                    SecFade1 = TEMP_FADE;
 
                     if OptionMode == 4
                     // CW vs CCW

@@ -6,11 +6,11 @@ use crate::rtc::millis;
 
 // Arduino time_t is an unsigned long (32 bit)
 // https://forum.arduino.cc/t/combining-int-and-time-t/907182
-static mut sysTime: u32 = 0;
-static mut prevMillis: u32 = 0;
-static mut nextSyncTime: u32 = 0;
+static mut SYS_TIME: u32 = 0;
+static mut PREV_MILLIS: u32 = 0;
+static mut NEXT_SYNC_TIME: u32 = 0;
 
-const syncInterval: u32 = 300;
+const SYNC_INTERVAL: u32 = 300;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum timeStatus_t {
@@ -18,26 +18,26 @@ pub enum timeStatus_t {
     timeSet,
 }
 
-static mut status: timeStatus_t = timeStatus_t::timeNotSet;
+static mut STATUS: timeStatus_t = timeStatus_t::timeNotSet;
 
 pub fn now() -> u32 {
-    while millis() - unsafe { prevMillis } >= 1000 {
-        unsafe { sysTime += 1 };
-        unsafe { prevMillis += 1000 };
+    while millis() - unsafe { PREV_MILLIS } >= 1000 {
+        unsafe { SYS_TIME += 1 };
+        unsafe { PREV_MILLIS += 1000 };
     }
-    unsafe { sysTime }
+    unsafe { SYS_TIME }
 }
 
 pub fn setTime(t: u32) {
-    unsafe { sysTime = t };
-    unsafe { nextSyncTime = t + syncInterval };
-    unsafe { status = timeStatus_t::timeSet };
-    unsafe { prevMillis = millis() };
+    unsafe { SYS_TIME = t };
+    unsafe { NEXT_SYNC_TIME = t + SYNC_INTERVAL };
+    unsafe { STATUS = timeStatus_t::timeSet };
+    unsafe { PREV_MILLIS = millis() };
 }
 
 pub fn timeStatus() -> timeStatus_t {
     now(); // required to actually update the status
-    unsafe { status }
+    unsafe { STATUS }
 }
 
 // fakes
