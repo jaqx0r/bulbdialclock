@@ -21,7 +21,7 @@ pub enum timeStatus_t {
 static mut status: timeStatus_t = timeStatus_t::timeNotSet;
 
 pub fn now() -> u32 {
-    while (millis() - unsafe { prevMillis } >= 1000) {
+    while millis() - unsafe { prevMillis } >= 1000 {
         unsafe { sysTime += 1 };
         unsafe { prevMillis += 1000 };
     }
