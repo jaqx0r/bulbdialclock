@@ -40,21 +40,32 @@ use crate::time::*;
 use arduino_hal::prelude::*;
 use panic_abort as _;
 
-/*
-EEPROM variables that are saved:  7
+/// EEPROM variables that are saved:  7
+struct Settings {
+    /// Brightness setting (range: 1-8)  Default: 8   (Fully bright)
+    main_bright: u8,
 
-* Brightness setting (range: 1-8)  Default: 8   (Fully bright)
+    /// Red brightness  (range: 0-63)    Default: 20 (But initialized to 30 in original!  TODO add feature for monocrhome)
+    hr_bright: u8,
 
-* Red brightness  (range: 0-63)    Default: 20
-* Green brightness (range: 0-63)   Default: 63
-* Blue brightness (range: 0-63)    Default: 63
+    /// Green brightness (range: 0-63)   Default: 63
+    min_bright: u8,
 
-* Time direction (Range: 0,1)      Default: 0  (Clockwise)
-* Fade style (Range: 0,1)         Default: 1  (Fade enabled)
+    /// Blue brightness (range: 0-63)    Default: 63
+    sec_bright: u8,
 
-* Alignment mode                  Default: 0
+    /// Time direction (Range: 0,1)      Default: 0  (Clockwise)
+    ccw: bool,
 
-*/
+    /// Fade style (Range: 0,1)         Default: 1  (Fade enabled)
+    fade_mode: bool,
+
+    /// Alignment mode                  Default: 0
+    // bool; never used
+
+    // Last brightness saved to EEPROM used to determine if changed.
+    last_saved_brightness: u8,
+}
 
 // "Factory" default configuration can be configured here:
 const MAIN_BRIGHT_DEFAULT: u8 = 8;
@@ -63,13 +74,27 @@ const RED_BRIGHT_DEFAULT: u8 = 63; // Use 63, default, for kits with monochrome 
 const GREEN_BRIGHT_DEFAULT: u8 = 63;
 const BLUE_BRIGHT_DEFAULT: u8 = 63;
 
-const CCW_DEFAULT: u8 = 0;
-const FADE_MODE_DEFAULT: u8 = 1;
+const CCW_DEFAULT: bool = false;
+const FADE_MODE_DEFAULT: bool = true;
 
 const TIME_MSG_LEN: usize = 11; // time sync to PC is HEADER followed by unix time_t as ten ascii digits
 const TIME_HEADER: u8 = 255; // Header tag for serial time sync message
 
 const TEMP_FADE: u8 = 63;
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            main_bright: MAIN_BRIGHT_DEFAULT,
+            hr_bright: RED_BRIGHT_DEFAULT,
+            min_bright: GREEN_BRIGHT_DEFAULT,
+            sec_bright: BLUE_BRIGHT_DEFAULT,
+            ccw: CCW_DEFAULT,
+            fade_mode: FADE_MODE_DEFAULT,
+            last_saved_brightness: MAIN_BRIGHT_DEFAULT,
+        }
+    }
+}
 
 fn delayTime(time: u8) {
     for _ in 0..time {
@@ -149,99 +174,41 @@ const MIN_LO: [u8; 30] = [
 const HR_HI: [u8; 12] = [10, 1, 2, 10, 10, 6, 3, 10, 10, 4, 5, 10];
 const HR_LO: [u8; 12] = [1, 10, 10, 2, 6, 10, 10, 3, 4, 10, 10, 5];
 
+/// Read the EEPROM into settings, or return a default if an error occurs during read.
 #[must_use]
-fn ApplyDefaults() -> (u8, u8, u8, u8, u8, u8) {
-    /*
-     * Brightness setting (range: 1-8)  Default: 8  (Fully bright)
-     * Red brightness  (range: 0-63)    Default: 20
-     * Green brightness (range: 0-63)   Default: 63
-     * Blue brightness (range: 0-63)    Default: 63
-     * Time direction (Range: 0,1)      Default: 0  (Clockwise)
-     * Fade style (Range: 0,1)          Default: 1  (Fade enabled)
-     */
-
-    (
-        MAIN_BRIGHT_DEFAULT,
-        RED_BRIGHT_DEFAULT,
-        GREEN_BRIGHT_DEFAULT,
-        BLUE_BRIGHT_DEFAULT,
-        CCW_DEFAULT,
-        FADE_MODE_DEFAULT,
-    )
-}
-
-#[must_use]
-fn EEReadSettings(eeprom: &mut arduino_hal::Eeprom) -> (u8, u8, u8, u8, u8, u8, u8) {
-    // TODO: Detect ANY bad values, not just 255.
-    let mut detectBad: bool = false;
-
-    // Variables to store brightness of the three LED rings.
-    let mut HourBright: u8 = 30;
-    let mut MinBright: u8 = 63;
-    let mut SecBright: u8 = 63;
-    let mut MainBright: u8 = 8; // 8 is maximum value.
-    let mut CCW: u8 = 0; // presume clockwise, not counterclockwise
-    let mut FadeMode: u8 = 1; // Presume fading is enabled.
-
-    let mut value: u8 = eeprom.read_byte(0);
-    if value > 8 {
-        // MainBright has a maximum possible value of 8.
-        detectBad = true;
-    } else {
-        MainBright = value;
+fn EEReadSettings(eeprom: &mut arduino_hal::Eeprom) -> Settings {
+    let mut vals: [u8; 7] = [255; 7];
+    if eeprom.read(0, &mut vals).is_err() {
+        return Settings::default();
     }
-    if value == 0 {
-        MainBright = 1; // Turn back on when power goes back on-- don't leave it dark.
+    let main_bright = match vals[0] {
+        v @ 1..=MAIN_BRIGHT_DEFAULT => v,
+        _ => MAIN_BRIGHT_DEFAULT,
+    };
+    Settings {
+        main_bright,
+        hr_bright: match vals[1] {
+            v @ 0..=RED_BRIGHT_DEFAULT => v,
+            _ => RED_BRIGHT_DEFAULT,
+        },
+        min_bright: match vals[2] {
+            v @ 0..=GREEN_BRIGHT_DEFAULT => v,
+            _ => GREEN_BRIGHT_DEFAULT,
+        },
+        sec_bright: match vals[3] {
+            v @ 0..=BLUE_BRIGHT_DEFAULT => v,
+            _ => BLUE_BRIGHT_DEFAULT,
+        },
+        ccw: match vals[4] {
+            v @ 0..=1 => v == 1,
+            _ => CCW_DEFAULT,
+        },
+        fade_mode: match vals[5] {
+            v @ 0..=1 => v == 1,
+            _ => FADE_MODE_DEFAULT,
+        },
+        last_saved_brightness: main_bright,
     }
-    value = eeprom.read_byte(1);
-    if value > 63 {
-        detectBad = true;
-    } else {
-        HourBright = value;
-    }
-
-    value = eeprom.read_byte(2);
-    if value > 63 {
-        detectBad = true;
-    } else {
-        MinBright = value;
-    }
-
-    value = eeprom.read_byte(3);
-    if value > 63 {
-        detectBad = true;
-    } else {
-        SecBright = value;
-    }
-
-    value = eeprom.read_byte(4);
-    if value > 1 {
-        detectBad = true;
-    } else {
-        CCW = value;
-    }
-
-    value = eeprom.read_byte(5);
-    if value == 255 {
-        detectBad = true;
-    } else {
-        FadeMode = value;
-    }
-
-    if detectBad {
-        (MainBright, HourBright, MinBright, SecBright, CCW, FadeMode) = ApplyDefaults();
-    }
-
-    let LastSavedBrightness = MainBright;
-    (
-        MainBright,
-        HourBright,
-        MinBright,
-        SecBright,
-        CCW,
-        FadeMode,
-        LastSavedBrightness,
-    )
 }
 
 #[must_use]
@@ -251,8 +218,8 @@ fn EESaveSettings(
     HourBright: u8,
     MinBright: u8,
     SecBright: u8,
-    CCW: u8,
-    FadeMode: u8,
+    CCW: bool,
+    FadeMode: bool,
 ) -> u8 {
     //EEPROM.write(Addr, Value);
 
@@ -263,8 +230,8 @@ fn EESaveSettings(
     eeprom.write_byte(1, HourBright);
     eeprom.write_byte(2, MinBright);
     eeprom.write_byte(3, SecBright);
-    eeprom.write_byte(4, CCW);
-    eeprom.write_byte(5, FadeMode);
+    eeprom.write_byte(4, if CCW { 1 } else { 0 });
+    eeprom.write_byte(5, if FadeMode { 1 } else { 0 });
 
     let LastSavedBrightness = MainBright;
 
@@ -312,7 +279,7 @@ fn normalTimeDisplay(SecNow: u8, MinNow: u8, HrNow: u8) -> (u8, u8, u8, u8, u8, 
 fn normalFades(
     millisCopy: u32,
     LastTime: u32,
-    FadeMode: u8,
+    FadeMode: bool,
     SecNow: u8,
     MinNow: u8,
     _HrNow: u8,
@@ -323,7 +290,7 @@ fn normalFades(
     mut HrFade1: u8,
     mut HrFade2: u8,
 ) -> (u8, u8, u8, u8, u8, u8) {
-    if FadeMode != 0 {
+    if FadeMode {
         // Normal time display
         if SecNow & 1 != 0
         // ODD time
@@ -495,21 +462,12 @@ fn main() -> ! {
     let mut MinDisp: u8 = 0;
     let mut SecDisp: u8 = 0;
 
-    // Variables to store brightness of the three LED rings.
-    let mut HourBright: u8;
-    let mut MinBright: u8;
-    let mut SecBright: u8;
-    let mut MainBright: u8;
-
     let mut LastTime: u32 = 0;
     let mut TimeSinceButton: u8 = 0;
-    let mut LastSavedBrightness: u8;
 
     // Modes:
-    let mut CCW: u8; // presume clockwise, not counterclockwise
     let mut ExtRTC: u8;
     let mut SleepMode: u8 = 0;
-    let mut FadeMode: u8; // Presume fading is enabled.
 
     let mut VCRmode: u8 = 1; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
     let mut FactoryResetDisable: u8 = 0; // To make sure that we don't accidentally reset the settings...
@@ -616,15 +574,7 @@ fn main() -> ! {
     );
 
     let mut ep = arduino_hal::Eeprom::new(dp.EEPROM);
-    (
-        MainBright,
-        HourBright,
-        MinBright,
-        SecBright,
-        CCW,
-        FadeMode,
-        LastSavedBrightness,
-    ) = EEReadSettings(&mut ep);
+    let mut settings = EEReadSettings(&mut ep);
 
     // Pull up inputs are HIGH when open, and LOW when pressed.
     let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
@@ -689,25 +639,25 @@ fn main() -> ! {
                             }
                         } else if OptionMode != 0 {
                             if OptionMode == 1 {
-                                if HourBright < 62 {
-                                    HourBright += 2;
+                                if settings.hr_bright < 62 {
+                                    settings.hr_bright += 2;
                                 }
                             }
                             if OptionMode == 2 {
-                                if MinBright < 62 {
-                                    MinBright += 2;
+                                if settings.min_bright < 62 {
+                                    settings.min_bright += 2;
                                 }
                             }
                             if OptionMode == 3 {
-                                if SecBright < 62 {
-                                    SecBright += 2;
+                                if settings.sec_bright < 62 {
+                                    settings.sec_bright += 2;
                                 }
                             }
                             if OptionMode == 4 {
-                                CCW = 0;
+                                settings.ccw = false;
                             }
                             if OptionMode == 5 {
-                                FadeMode = 1;
+                                settings.fade_mode = true;
                             }
                         } else if SettingTime != 0 {
                             if SettingTime == 1 {
@@ -730,9 +680,9 @@ fn main() -> ! {
                             }
                         } else {
                             // Brightness control mode
-                            MainBright += 1;
-                            if MainBright > 8 {
-                                MainBright = 1;
+                            settings.main_bright += 1;
+                            if settings.main_bright > 8 {
+                                settings.main_bright = 1;
                             }
                         }
                     }
@@ -765,25 +715,25 @@ fn main() -> ! {
                             }
                         } else if OptionMode != 0 {
                             if OptionMode == 1 {
-                                if HourBright > 1 {
-                                    HourBright -= 2;
+                                if settings.hr_bright > 1 {
+                                    settings.hr_bright -= 2;
                                 }
                             }
                             if OptionMode == 2 {
-                                if MinBright > 1 {
-                                    MinBright -= 2;
+                                if settings.min_bright > 1 {
+                                    settings.min_bright -= 2;
                                 }
                             }
                             if OptionMode == 3 {
-                                if SecBright > 1 {
-                                    SecBright -= 2;
+                                if settings.sec_bright > 1 {
+                                    settings.sec_bright -= 2;
                                 }
                             }
                             if OptionMode == 4 {
-                                CCW = 1;
+                                settings.ccw = true;
                             }
                             if OptionMode == 5 {
-                                FadeMode = 0;
+                                settings.fade_mode = false;
                             }
                         } else if SettingTime != 0 {
                             if SettingTime == 1 {
@@ -809,10 +759,10 @@ fn main() -> ! {
                             }
                         } else {
                             // Normal brightness adjustment mode
-                            if MainBright > 1 {
-                                MainBright -= 1;
+                            if settings.main_bright > 1 {
+                                settings.main_bright -= 1;
                             } else {
-                                MainBright = 8;
+                                settings.main_bright = 8;
                             }
                         }
                     }
@@ -892,9 +842,15 @@ fn main() -> ! {
                 if TimeSinceButton == 10
                 // 10 s after last button released...
                 {
-                    if LastSavedBrightness != MainBright {
-                        LastSavedBrightness = EESaveSettings(
-                            &mut ep, MainBright, HourBright, MinBright, SecBright, CCW, FadeMode,
+                    if settings.last_saved_brightness != settings.main_bright {
+                        settings.last_saved_brightness = EESaveSettings(
+                            &mut ep,
+                            settings.main_bright,
+                            settings.hr_bright,
+                            settings.min_bright,
+                            settings.sec_bright,
+                            settings.ccw,
+                            settings.fade_mode,
                         );
                     }
                 }
@@ -933,9 +889,15 @@ fn main() -> ! {
 
                 // Hold + and - for 3 s AT POWER ON to restore factory settings.
                 if FactoryResetDisable == 0 {
-                    (MainBright, HourBright, MinBright, SecBright, CCW, FadeMode) = ApplyDefaults();
-                    LastSavedBrightness = EESaveSettings(
-                        &mut ep, MainBright, HourBright, MinBright, SecBright, CCW, FadeMode,
+                    settings = Settings::default();
+                    settings.last_saved_brightness = EESaveSettings(
+                        &mut ep,
+                        settings.main_bright,
+                        settings.hr_bright,
+                        settings.min_bright,
+                        settings.sec_bright,
+                        settings.ccw,
+                        settings.fade_mode,
                     );
                     AllLEDsOff!(); // Blink LEDs off to indicate restoring data
                     arduino_hal::delay_ms(100);
@@ -959,8 +921,14 @@ fn main() -> ! {
                 if OptionMode != 0 {
                     OptionMode = 0;
                     // Save options if exiting option mode!
-                    LastSavedBrightness = EESaveSettings(
-                        &mut ep, MainBright, HourBright, MinBright, SecBright, CCW, FadeMode,
+                    settings.last_saved_brightness = EESaveSettings(
+                        &mut ep,
+                        settings.main_bright,
+                        settings.hr_bright,
+                        settings.min_bright,
+                        settings.sec_bright,
+                        settings.ccw,
+                        settings.fade_mode,
                     );
                     AllLEDsOff!(); // Blink LEDs off to indicate saving data
                     arduino_hal::delay_ms(100);
@@ -984,8 +952,14 @@ fn main() -> ! {
 
                     if OptionMode != 0 {
                         // Save options if exiting option mode!
-                        LastSavedBrightness = EESaveSettings(
-                            &mut ep, MainBright, HourBright, MinBright, SecBright, CCW, FadeMode,
+                        settings.last_saved_brightness = EESaveSettings(
+                            &mut ep,
+                            settings.main_bright,
+                            settings.hr_bright,
+                            settings.min_bright,
+                            settings.sec_bright,
+                            settings.ccw,
+                            settings.fade_mode,
                         );
                         AllLEDsOff!(); // Blink LEDs off to indicate saving data
                         arduino_hal::delay_ms(100);
@@ -1143,7 +1117,7 @@ fn main() -> ! {
             h5 = SecDisp;
             l5 = SecNext;
 
-            if CCW != 0 {
+            if settings.ccw {
                 // Counterclockwise
                 if HrDisp != 0 {
                     h3 = 12 - HrDisp;
@@ -1265,20 +1239,40 @@ fn main() -> ! {
                         HrFade1 = 0;
                     } else {
                         (SecFade1, SecFade2, MinFade1, MinFade2, HrFade1, HrFade2) = normalFades(
-                            millisCopy, LastTime, FadeMode, SecNow, MinNow, HrNow, SecFade1,
-                            SecFade2, MinFade1, MinFade2, HrFade1, HrFade2,
+                            millisCopy,
+                            LastTime,
+                            settings.fade_mode,
+                            SecNow,
+                            MinNow,
+                            HrNow,
+                            SecFade1,
+                            SecFade2,
+                            MinFade1,
+                            MinFade2,
+                            HrFade1,
+                            HrFade2,
                         );
                     }
                 }
             }
         } else {
             (SecFade1, SecFade2, MinFade1, MinFade2, HrFade1, HrFade2) = normalFades(
-                millisCopy, LastTime, FadeMode, SecNow, MinNow, HrNow, SecFade1, SecFade2,
-                MinFade1, MinFade2, HrFade1, HrFade2,
+                millisCopy,
+                LastTime,
+                settings.fade_mode,
+                SecNow,
+                MinNow,
+                HrNow,
+                SecFade1,
+                SecFade2,
+                MinFade1,
+                MinFade2,
+                HrFade1,
+                HrFade2,
             );
         }
 
-        let mut tempbright: u8 = MainBright;
+        let mut tempbright: u8 = settings.main_bright;
 
         if SleepMode != 0 {
             tempbright = 0;
@@ -1290,12 +1284,12 @@ fn main() -> ! {
             }
         }
 
-        d0 = HourBright * HrFade1 * tempbright >> 7;
-        d1 = HourBright * HrFade2 * tempbright >> 7;
-        d2 = MinBright * MinFade1 * tempbright >> 7;
-        d3 = MinBright * MinFade2 * tempbright >> 7;
-        d4 = SecBright * SecFade1 * tempbright >> 7;
-        d5 = SecBright * SecFade2 * tempbright >> 7;
+        d0 = settings.hr_bright * HrFade1 * tempbright >> 7;
+        d1 = settings.hr_bright * HrFade2 * tempbright >> 7;
+        d2 = settings.min_bright * MinFade1 * tempbright >> 7;
+        d3 = settings.min_bright * MinFade2 * tempbright >> 7;
+        d4 = settings.sec_bright * SecFade1 * tempbright >> 7;
+        d5 = settings.sec_bright * SecFade2 * tempbright >> 7;
 
         // unsigned long  temp = millis();
 
@@ -1346,10 +1340,10 @@ fn main() -> ! {
                 AllLEDsOff!();
             }
 
-            if MainBright < 8 {
-                delayTime((8 - MainBright) << 5);
-                delayTime((8 - MainBright) << 5);
-                delayTime((8 - MainBright) << 5);
+            if settings.main_bright < 8 {
+                delayTime((8 - settings.main_bright) << 5);
+                delayTime((8 - settings.main_bright) << 5);
+                delayTime((8 - settings.main_bright) << 5);
             }
 
             i += 1;
