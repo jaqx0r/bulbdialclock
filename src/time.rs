@@ -28,14 +28,14 @@ pub fn now() -> u32 {
     unsafe { SYS_TIME }
 }
 
-pub fn setTime(t: u32) {
+pub fn set_time(t: u32) {
     unsafe { SYS_TIME = t };
     unsafe { NEXT_SYNC_TIME = t + SYNC_INTERVAL };
     unsafe { STATUS = TimeStatus::TimeSet };
     unsafe { PREV_MILLIS = millis() };
 }
 
-pub fn timeStatus() -> TimeStatus {
+pub fn time_status() -> TimeStatus {
     now(); // required to actually update the status
     unsafe { STATUS }
 }

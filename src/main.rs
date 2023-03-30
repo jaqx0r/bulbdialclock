@@ -31,7 +31,6 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_std]
 #![no_main]
 #![feature(abi_avr_interrupt)]
-#![allow(non_snake_case)]
 
 mod rtc;
 mod time;
@@ -96,7 +95,7 @@ impl Default for Settings {
     }
 }
 
-fn delayTime(time: u8) {
+fn delay_time(time: u8) {
     for _ in 0..time {
         avr_device::asm::nop();
     }
@@ -109,7 +108,7 @@ type SerialReader = arduino_hal::hal::usart::UsartReader<
     arduino_hal::clock::MHz16,
 >;
 
-fn getPCtime(s_rx: &mut SerialReader) -> bool {
+fn get_pc_time(s_rx: &mut SerialReader) -> bool {
     // if time sync available from serial port, update time and return true
     match s_rx.read() {
         Ok(TIME_HEADER) => {
@@ -121,7 +120,7 @@ fn getPCtime(s_rx: &mut SerialReader) -> bool {
                         if let Some(d) = char::from(c).to_digit(10) {
                             pctime = (10 * pctime) + d;
                         }
-                        setTime(pctime);
+                        set_time(pctime);
                         return true;
                     }
                     _ => return false,
@@ -140,7 +139,7 @@ type SerialWriter = arduino_hal::hal::usart::UsartWriter<
     arduino_hal::clock::MHz16,
 >;
 
-fn printDigits(s_tx: &mut SerialWriter, digits: u8) {
+fn print_digits(s_tx: &mut SerialWriter, digits: u8) {
     // utility function for digital clock display: prints preceding colon and leading 0
     ufmt::uwrite!(s_tx, ":").unwrap();
     if digits < 10 {
@@ -149,11 +148,11 @@ fn printDigits(s_tx: &mut SerialWriter, digits: u8) {
     ufmt::uwrite!(s_tx, "{}", digits).unwrap();
 }
 
-fn digitalClockDisplay(s_tx: &mut SerialWriter) {
+fn digital_clock_display(s_tx: &mut SerialWriter) {
     // digital clock display of current date and time
     ufmt::uwrite!(s_tx, "{}", hour()).unwrap();
-    printDigits(s_tx, minute().try_into().unwrap());
-    printDigits(s_tx, second().try_into().unwrap());
+    print_digits(s_tx, minute().try_into().unwrap());
+    print_digits(s_tx, second().try_into().unwrap());
     ufmt::uwriteln!(s_tx, " {} {} {}", weekday(), month(), day()).unwrap();
 }
 
@@ -176,7 +175,7 @@ const HR_LO: [u8; 12] = [1, 10, 10, 2, 6, 10, 10, 3, 4, 10, 10, 5];
 
 /// Read the EEPROM into settings, or return a default if an error occurs during read.
 #[must_use]
-fn EEReadSettings(eeprom: &mut arduino_hal::Eeprom) -> Settings {
+fn eeprom_read_settings(eeprom: &mut arduino_hal::Eeprom) -> Settings {
     let mut vals: [u8; 7] = [255; 7];
     if eeprom.read(0, &mut vals).is_err() {
         return Settings::default();
@@ -212,134 +211,135 @@ fn EEReadSettings(eeprom: &mut arduino_hal::Eeprom) -> Settings {
 }
 
 #[must_use]
-fn EESaveSettings(
+fn eeprom_save_settings(
     eeprom: &mut arduino_hal::Eeprom,
-    MainBright: u8,
-    HourBright: u8,
-    MinBright: u8,
-    SecBright: u8,
-    CCW: bool,
-    FadeMode: bool,
+    main_bright: u8,
+    hour_bright: u8,
+    min_bright: u8,
+    sec_bright: u8,
+    ccw: bool,
+    fade_mode: bool,
 ) -> u8 {
     //EEPROM.write(Addr, Value);
 
     // Careful if you use  this function: EEPROM has a limited number of write
     // cycles in its life.  Good for human-operated buttons, bad for automation.
 
-    eeprom.write_byte(0, MainBright);
-    eeprom.write_byte(1, HourBright);
-    eeprom.write_byte(2, MinBright);
-    eeprom.write_byte(3, SecBright);
-    eeprom.write_byte(4, if CCW { 1 } else { 0 });
-    eeprom.write_byte(5, if FadeMode { 1 } else { 0 });
+    eeprom.write_byte(0, main_bright);
+    eeprom.write_byte(1, hour_bright);
+    eeprom.write_byte(2, min_bright);
+    eeprom.write_byte(3, sec_bright);
+    eeprom.write_byte(4, if ccw { 1 } else { 0 });
+    eeprom.write_byte(5, if fade_mode { 1 } else { 0 });
 
-    let LastSavedBrightness = MainBright;
+    let last_saved_brightness = main_bright;
 
     // Optional: Blink LEDs off to indicate when we're writing to the EEPROM
     // AllLEDsOff!();
     // delay(100);
-    LastSavedBrightness
+    last_saved_brightness
 }
 
 #[must_use]
-fn normalTimeDisplay(SecNow: u8, MinNow: u8, HrNow: u8) -> (u8, u8, u8, u8, u8, u8) {
-    let mut SecDisp = SecNow + 30; // Offset by 30 s to project *shadow* in the right place.
-    if SecDisp > 59 {
-        SecDisp -= 60;
+fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8, u8, u8) {
+    let mut sec_disp = sec_now + 30; // Offset by 30 s to project *shadow* in the right place.
+    if sec_disp > 59 {
+        sec_disp -= 60;
     }
-    SecDisp >>= 1; // Divide by two, since there are 30 LEDs, not 60.
+    sec_disp >>= 1; // Divide by two, since there are 30 LEDs, not 60.
 
-    let mut SecNext = SecDisp + 1;
-    if SecNext > 29 {
-        SecNext = 0;
+    let mut sec_next = sec_disp + 1;
+    if sec_next > 29 {
+        sec_next = 0;
     }
-    let mut MinDisp = MinNow + 30; // Offset by 30 m to project *shadow* in the right place.
-    if MinDisp > 59 {
-        MinDisp -= 60;
+    let mut min_disp = min_now + 30; // Offset by 30 m to project *shadow* in the right place.
+    if min_disp > 59 {
+        min_disp -= 60;
     }
-    MinDisp >>= 1; // Divide by two, since there are 30 LEDs, not 60.
+    min_disp >>= 1; // Divide by two, since there are 30 LEDs, not 60.
 
-    let mut MinNext = MinDisp + 1;
-    if MinNext > 29 {
-        MinNext = 0;
+    let mut min_next = min_disp + 1;
+    if min_next > 29 {
+        min_next = 0;
     }
-    let mut HrDisp = HrNow + 6; // Offset by 6 h to project *shadow* in the right place.
+    let mut hr_disp = hr_now + 6; // Offset by 6 h to project *shadow* in the right place.
 
-    if HrDisp > 11 {
-        HrDisp -= 12;
+    if hr_disp > 11 {
+        hr_disp -= 12;
     }
-    let mut HrNext = HrDisp + 1;
-    if HrNext > 11 {
-        HrNext = 0;
+    let mut hr_next = hr_disp + 1;
+    if hr_next > 11 {
+        hr_next = 0;
     }
-    (SecDisp, SecNext, MinDisp, MinNext, HrDisp, HrNext)
+    (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next)
 }
 
 #[must_use]
-fn normalFades(
-    millisCopy: u32,
-    LastTime: u32,
-    FadeMode: bool,
-    SecNow: u8,
-    MinNow: u8,
-    _HrNow: u8,
-    mut SecFade1: u8,
-    mut SecFade2: u8,
-    mut MinFade1: u8,
-    mut MinFade2: u8,
-    mut HrFade1: u8,
-    mut HrFade2: u8,
+fn normal_fades(
+    millis: u32,
+    last_time: u32,
+    fade_mode: bool,
+    sec_now: u8,
+    min_now: u8,
+    mut sec_fade_1: u8,
+    mut sec_fade_2: u8,
+    mut min_fade_1: u8,
+    mut min_fade_2: u8,
+    mut hr_fade_1: u8,
+    mut hr_fade_2: u8,
 ) -> (u8, u8, u8, u8, u8, u8) {
-    if FadeMode {
+    if fade_mode {
         // Normal time display
-        if SecNow & 1 != 0
+        if sec_now & 1 != 0
         // ODD time
         {
-            SecFade2 = (63 * (millisCopy - LastTime) / 1000) as u8;
-            SecFade1 = 63 - SecFade2;
+            sec_fade_2 = (63 * (millis - last_time) / 1000) as u8;
+            sec_fade_1 = 63 - sec_fade_2;
         }
 
-        if MinNow & 1 != 0
+        if min_now & 1 != 0
         // ODD time
         {
-            if SecNow == 59 {
-                MinFade2 = SecFade2;
-                MinFade1 = SecFade1;
+            if sec_now == 59 {
+                min_fade_2 = sec_fade_2;
+                min_fade_1 = sec_fade_1;
             }
         }
 
-        if MinNow == 59
+        if min_now == 59
         // End of the hour, only:
         {
-            if SecNow == 59 {
-                HrFade2 = SecFade2;
-                HrFade1 = SecFade1;
+            if sec_now == 59 {
+                hr_fade_2 = sec_fade_2;
+                hr_fade_1 = sec_fade_1;
             }
         }
     } else {
         // no fading
 
-        HrFade1 = TEMP_FADE;
-        MinFade1 = TEMP_FADE;
-        SecFade1 = TEMP_FADE;
+        hr_fade_1 = TEMP_FADE;
+        min_fade_1 = TEMP_FADE;
+        sec_fade_1 = TEMP_FADE;
     }
-    (SecFade1, SecFade2, MinFade1, MinFade2, HrFade1, HrFade2)
+    (
+        sec_fade_1, sec_fade_2, min_fade_1, min_fade_2, hr_fade_1, hr_fade_2,
+    )
 }
 
 // 104 is the DS3231 RTC device address
 const RTC_ADDRESS: u8 = 104;
 
-fn RTCsetTime(i2c: &mut arduino_hal::I2c, hourIn: u8, minuteIn: u8, secondIn: u8) {
-    let ts: u8 = secondIn / 10;
-    let os: u8 = secondIn - ts * 10;
+fn rtc_set_time(i2c: &mut arduino_hal::I2c, hour_in: u8, minute_in: u8, second_in: u8) {
+    let ts: u8 = second_in / 10;
+    let os: u8 = second_in - ts * 10;
     let ss: u8 = (ts << 4) + os;
 
-    let tm: u8 = minuteIn / 10;
-    let om: u8 = minuteIn - tm * 10;
+    let tm: u8 = minute_in / 10;
+    let om: u8 = minute_in - tm * 10;
     let sm: u8 = (tm << 4) | om;
 
-    let th: u8 = hourIn / 10;
-    let oh: u8 = hourIn - th * 10;
+    let th: u8 = hour_in / 10;
+    let oh: u8 = hour_in - th * 10;
     let sh: u8 = (th << 4) | oh;
 
     let buf: [u8; 3] = [ss, sm, sh];
@@ -347,19 +347,19 @@ fn RTCsetTime(i2c: &mut arduino_hal::I2c, hourIn: u8, minuteIn: u8, secondIn: u8
 }
 
 #[must_use]
-fn RTCgetTime(
+fn rtc_get_time(
     i2c: &mut arduino_hal::I2c,
-    ExtRTC: u8,
-    mut SecNow: u8,
-    mut MinNow: u8,
-    mut HrNow: u8,
+    ext_rtc: u8,
+    mut sec_now: u8,
+    mut min_now: u8,
+    mut hr_now: u8,
 ) -> (u8, u8, u8, u8) {
     // Read out time from RTC module, if present
     // send request to receive data starting at register 0
 
     let mut buf: [u8; 3] = [0, 0, 0];
     if let Err(_) = i2c.read(RTC_ADDRESS, &mut buf) {
-        return (0, SecNow, MinNow, HrNow);
+        return (0, sec_now, min_now, hr_now);
     }
 
     let mut seconds: i16;
@@ -388,9 +388,9 @@ fn RTCgetTime(
     // Optional: report time::
     // Serial.print(hours); Serial.print(":"); Serial.print(minutes); Serial.print(":"); Serial.println(seconds);
 
-    if (minutes != 0) && (MinNow != 0) {
+    if (minutes != 0) && (min_now != 0) {
         let temptime1 = 3600 * hours + 60 * minutes + seconds; // Values read from RTC
-        let temptime2 = 3600 * HrNow as i16 + 60 * MinNow as i16 + SecNow as i16; // Internally stored time estimate.
+        let temptime2 = 3600 * hr_now as i16 + 60 * min_now as i16 + sec_now as i16; // Internally stored time estimate.
 
         if temptime1 > temptime2 {
             if (temptime1 - temptime2) > 2 {
@@ -403,98 +403,98 @@ fn RTCgetTime(
         }
     }
 
-    if ExtRTC == 0 {
+    if ext_rtc == 0 {
         updatetime = 1;
     }
     if updatetime != 0 {
-        SecNow = seconds as u8;
-        MinNow = minutes as u8;
-        HrNow = hours as u8;
+        sec_now = seconds as u8;
+        min_now = minutes as u8;
+        hr_now = hours as u8;
 
         // Convert 24-hour mode to 12-hour mode
-        if HrNow > 11 {
-            HrNow -= 12;
+        if hr_now > 11 {
+            hr_now -= 12;
         }
     }
-    (1, SecNow, MinNow, HrNow)
+    (1, sec_now, min_now, hr_now)
 }
 #[must_use]
-fn IncrAlignVal(mut AlignValue: u8, AlignMode: u8) -> u8 {
-    AlignValue += 1;
+fn incr_align_val(mut align_value: u8, align_mode: u8) -> u8 {
+    align_value += 1;
 
-    if AlignMode < 5
+    if align_mode < 5
     // seconds or minutes
     {
-        if AlignValue > 29 {
-            AlignValue = 0;
+        if align_value > 29 {
+            align_value = 0;
         }
     } else {
-        if AlignValue > 11 {
-            AlignValue = 0;
+        if align_value > 11 {
+            align_value = 0;
         }
     }
-    AlignValue
+    align_value
 }
 #[must_use]
-fn DecrAlignVal(mut AlignValue: u8, AlignMode: u8) -> u8 {
-    if AlignValue > 0 {
-        AlignValue -= 1;
-    } else if AlignMode < 5
+fn decr_align_val(mut align_value: u8, align_mode: u8) -> u8 {
+    if align_value > 0 {
+        align_value -= 1;
+    } else if align_mode < 5
     // seconds or minutes
     {
-        AlignValue = 29;
+        align_value = 29;
     } else
     // hours
     {
-        AlignValue = 11;
+        align_value = 11;
     }
-    AlignValue
+    align_value
 }
 
 const START_OPT_TIME_LIMIT: u8 = 30;
 
 #[arduino_hal::entry]
 fn main() -> ! {
-    let mut SecNow: u8 = 0;
-    let mut MinNow: u8 = 0;
-    let mut HrNow: u8 = 0;
-    let mut HrDisp: u8 = 0;
-    let mut MinDisp: u8 = 0;
-    let mut SecDisp: u8 = 0;
+    let mut sec_now: u8 = 0;
+    let mut min_now: u8 = 0;
+    let mut hr_now: u8 = 0;
+    let mut hr_disp: u8 = 0;
+    let mut min_disp: u8 = 0;
+    let mut sec_disp: u8 = 0;
 
-    let mut LastTime: u32 = 0;
-    let mut TimeSinceButton: u8 = 0;
+    let mut last_time: u32 = 0;
+    let mut time_since_button: u8 = 0;
 
     // Modes:
-    let mut ExtRTC: u8;
-    let mut SleepMode: u8 = 0;
+    let mut ext_rtc: u8;
+    let mut sleep_mode: u8 = 0;
 
-    let mut VCRmode: u8 = 1; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
-    let mut FactoryResetDisable: u8 = 0; // To make sure that we don't accidentally reset the settings...
+    let mut vcr_mode: u8 = 1; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
+    let mut factory_reset_disable: u8 = 0; // To make sure that we don't accidentally reset the settings...
 
-    let mut SettingTime: u8 = 0; // Normally 0.
-                                 // 1: hours, 2: minutes, 3: seconds, 4: not setting time
+    let mut setting_time: u8 = 0; // Normally 0.
+                                  // 1: hours, 2: minutes, 3: seconds, 4: not setting time
 
-    let mut AlignMode: u8 = 0; // Normally 0.
-    let mut OptionMode: u8 = 0; // NOrmally 0
-    let mut AlignValue: u8 = 0;
-    let mut AlignRate: i8 = 2;
+    let mut align_mode: u8 = 0; // Normally 0.
+    let mut option_mode: u8 = 0; // NOrmally 0
+    let mut align_value: u8 = 0;
+    let mut align_rate: i8 = 2;
 
-    let mut AlignLoopCount: u8 = 0;
-    let mut StartingOption: u8 = 0;
+    let mut align_loop_count: u8 = 0;
+    let mut starting_option: u8 = 0;
 
-    let mut HoldTimeSet: u8 = 0;
-    let mut HoldOption: u8 = 0;
-    let mut HoldAlign: u8 = 0;
+    let mut hold_time_set: u8 = 0;
+    let mut hold_option: u8 = 0;
+    let mut hold_align: u8 = 0;
 
-    let mut MomentaryOverridePlus: u8 = 0;
-    let mut MomentaryOverrideMinus: u8 = 0;
-    let mut MomentaryOverrideZ: u8 = 0;
+    let mut momentary_override_plus: u8 = 0;
+    let mut momentary_override_minus: u8 = 0;
+    let mut momentary_override_z: u8 = 0;
 
     // Initialised in normalTimeDisplay
-    let mut SecNext: u8 = 0;
-    let mut MinNext: u8 = 0;
-    let mut HrNext: u8 = 0;
+    let mut sec_next: u8 = 0;
+    let mut min_next: u8 = 0;
+    let mut hr_next: u8 = 0;
     // Initialised at end of RefreshTime conditional
     let mut h0: u8 = 0;
     let mut h1: u8 = 0;
@@ -515,12 +515,12 @@ fn main() -> ! {
     let mut d4: u8;
     let mut d5: u8;
     // Initialised in normalFades or at end of RefreshTime conditional
-    let mut HrFade1: u8;
-    let mut HrFade2: u8;
-    let mut MinFade1: u8;
-    let mut MinFade2: u8;
-    let mut SecFade1: u8;
-    let mut SecFade2: u8;
+    let mut hr_fade_1: u8;
+    let mut hr_fade_2: u8;
+    let mut min_fade_1: u8;
+    let mut min_fade_2: u8;
+    let mut sec_fade_1: u8;
+    let mut sec_fade_2: u8;
 
     let mut prevtime: u32 = 0;
 
@@ -531,7 +531,7 @@ fn main() -> ! {
 
     init_tc0(dp.TC0);
 
-    setTime(0);
+    set_time(0);
 
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
@@ -574,7 +574,7 @@ fn main() -> ! {
     );
 
     let mut ep = arduino_hal::Eeprom::new(dp.EEPROM);
-    let mut settings = EEReadSettings(&mut ep);
+    let mut settings = eeprom_read_settings(&mut ep);
 
     // Pull up inputs are HIGH when open, and LOW when pressed.
     let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
@@ -595,87 +595,87 @@ fn main() -> ! {
     );
 
     // Check if RTC is available, and use it to set the time if so.
-    (ExtRTC, SecNow, MinNow, HrNow) = RTCgetTime(&mut i2c, 0, SecNow, MinNow, HrNow);
+    (ext_rtc, sec_now, min_now, hr_now) = rtc_get_time(&mut i2c, 0, sec_now, min_now, hr_now);
     // If no RTC is found, no attempt will be made to use it thereafter.
 
-    if ExtRTC != 0 {
+    if ext_rtc != 0 {
         // If time is already set from the RTC...
-        VCRmode = 0;
+        vcr_mode = 0;
     }
 
     unsafe { avr_device::interrupt::enable() };
 
     loop {
-        let mut RefreshTime = AlignMode + SettingTime + OptionMode;
+        let mut refresh_time = align_mode + setting_time + option_mode;
 
         let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
 
         if plus_copy != plus_last || minus_copy != minus_last || z_copy != z_last
         // Button change detected
         {
-            VCRmode = 0; // End once any buttons have been pressed...
-            TimeSinceButton = 0;
+            vcr_mode = 0; // End once any buttons have been pressed...
+            time_since_button = 0;
 
             if !plus_copy && plus_last {
                 // "+" Button was pressed previously, and was just released!
 
-                if MomentaryOverridePlus != 0 {
-                    MomentaryOverridePlus = 0;
+                if momentary_override_plus != 0 {
+                    momentary_override_plus = 0;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
-                    if SleepMode != 0 {
-                        SleepMode = 0;
+                    if sleep_mode != 0 {
+                        sleep_mode = 0;
                     } else {
-                        if AlignMode != 0 {
-                            if AlignMode & 1 != 0
+                        if align_mode != 0 {
+                            if align_mode & 1 != 0
                             // Odd mode:
                             {
-                                if AlignRate < 2 {
-                                    AlignRate += 1;
+                                if align_rate < 2 {
+                                    align_rate += 1;
                                 }
                             } else {
-                                AlignValue = IncrAlignVal(AlignValue, AlignMode);
+                                align_value = incr_align_val(align_value, align_mode);
                                 // Even mode:
                             }
-                        } else if OptionMode != 0 {
-                            if OptionMode == 1 {
+                        } else if option_mode != 0 {
+                            if option_mode == 1 {
                                 if settings.hr_bright < 62 {
                                     settings.hr_bright += 2;
                                 }
                             }
-                            if OptionMode == 2 {
+                            if option_mode == 2 {
                                 if settings.min_bright < 62 {
                                     settings.min_bright += 2;
                                 }
                             }
-                            if OptionMode == 3 {
+                            if option_mode == 3 {
                                 if settings.sec_bright < 62 {
                                     settings.sec_bright += 2;
                                 }
                             }
-                            if OptionMode == 4 {
+                            if option_mode == 4 {
                                 settings.ccw = false;
                             }
-                            if OptionMode == 5 {
+                            if option_mode == 5 {
                                 settings.fade_mode = true;
                             }
-                        } else if SettingTime != 0 {
-                            if SettingTime == 1 {
-                                HrNow += 1;
-                                if HrNow > 11 {
-                                    HrNow = 0;
+                        } else if setting_time != 0 {
+                            if setting_time == 1 {
+                                hr_now += 1;
+                                if hr_now > 11 {
+                                    hr_now = 0;
                                 }
                             }
-                            if SettingTime == 2 {
-                                MinNow += 1;
-                                if MinNow > 59 {
-                                    MinNow = 0;
+                            if setting_time == 2 {
+                                min_now += 1;
+                                if min_now > 59 {
+                                    min_now = 0;
                                 }
                             }
-                            if SettingTime == 3 {
-                                SecNow += 1;
-                                if SecNow > 59 {
-                                    SecNow = 0;
+                            if setting_time == 3 {
+                                sec_now += 1;
+                                if sec_now > 59 {
+                                    sec_now = 0;
                                 }
                             }
                         } else {
@@ -692,69 +692,69 @@ fn main() -> ! {
             if !minus_copy && minus_last {
                 // "-" Button was pressed and just released!
 
-                VCRmode = 0; // End once any buttons have been pressed...
-                TimeSinceButton = 0;
+                vcr_mode = 0; // End once any buttons have been pressed...
+                time_since_button = 0;
 
-                if MomentaryOverrideMinus != 0 {
-                    MomentaryOverrideMinus = 0;
+                if momentary_override_minus != 0 {
+                    momentary_override_minus = 0;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
-                    if SleepMode != 0 {
-                        SleepMode = 0;
+                    if sleep_mode != 0 {
+                        sleep_mode = 0;
                     } else {
-                        if AlignMode != 0 {
-                            if AlignMode & 1 != 0
+                        if align_mode != 0 {
+                            if align_mode & 1 != 0
                             // Odd mode:
                             {
-                                if AlignRate > -3 {
-                                    AlignRate -= 1;
+                                if align_rate > -3 {
+                                    align_rate -= 1;
                                 }
                             } else {
-                                AlignValue = DecrAlignVal(AlignValue, AlignMode);
+                                align_value = decr_align_val(align_value, align_mode);
                                 // Even mode:
                             }
-                        } else if OptionMode != 0 {
-                            if OptionMode == 1 {
+                        } else if option_mode != 0 {
+                            if option_mode == 1 {
                                 if settings.hr_bright > 1 {
                                     settings.hr_bright -= 2;
                                 }
                             }
-                            if OptionMode == 2 {
+                            if option_mode == 2 {
                                 if settings.min_bright > 1 {
                                     settings.min_bright -= 2;
                                 }
                             }
-                            if OptionMode == 3 {
+                            if option_mode == 3 {
                                 if settings.sec_bright > 1 {
                                     settings.sec_bright -= 2;
                                 }
                             }
-                            if OptionMode == 4 {
+                            if option_mode == 4 {
                                 settings.ccw = true;
                             }
-                            if OptionMode == 5 {
+                            if option_mode == 5 {
                                 settings.fade_mode = false;
                             }
-                        } else if SettingTime != 0 {
-                            if SettingTime == 1 {
-                                if HrNow > 0 {
-                                    HrNow -= 1;
+                        } else if setting_time != 0 {
+                            if setting_time == 1 {
+                                if hr_now > 0 {
+                                    hr_now -= 1;
                                 } else {
-                                    HrNow = 11;
+                                    hr_now = 11;
                                 }
                             }
-                            if SettingTime == 2 {
-                                if MinNow > 0 {
-                                    MinNow -= 1;
+                            if setting_time == 2 {
+                                if min_now > 0 {
+                                    min_now -= 1;
                                 } else {
-                                    MinNow = 59;
+                                    min_now = 59;
                                 }
                             }
-                            if SettingTime == 3 {
-                                if SecNow > 0 {
-                                    SecNow -= 1;
+                            if setting_time == 3 {
+                                if sec_now > 0 {
+                                    sec_now -= 1;
                                 } else {
-                                    SecNow = 59;
+                                    sec_now = 59;
                                 }
                             }
                         } else {
@@ -772,37 +772,37 @@ fn main() -> ! {
             if !z_copy && z_last {
                 // "Z" Button was pressed and just released!
 
-                VCRmode = 0; // End once any buttons have been pressed...
-                TimeSinceButton = 0;
+                vcr_mode = 0; // End once any buttons have been pressed...
+                time_since_button = 0;
 
-                if MomentaryOverrideZ != 0 {
-                    MomentaryOverrideZ = 0;
+                if momentary_override_z != 0 {
+                    momentary_override_z = 0;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
-                    if AlignMode != 0 {
-                        AlignMode += 1;
-                        if AlignMode > 6 {
-                            AlignMode = 1;
+                    if align_mode != 0 {
+                        align_mode += 1;
+                        if align_mode > 6 {
+                            align_mode = 1;
                         }
-                        AlignValue = 0;
-                        AlignRate = 2;
-                    } else if OptionMode != 0 {
-                        OptionMode += 1;
-                        StartingOption = 0;
+                        align_value = 0;
+                        align_rate = 2;
+                    } else if option_mode != 0 {
+                        option_mode += 1;
+                        starting_option = 0;
 
-                        if OptionMode > 5 {
-                            OptionMode = 1;
+                        if option_mode > 5 {
+                            option_mode = 1;
                         }
-                    } else if SettingTime != 0 {
-                        SettingTime += 1;
-                        if SettingTime > 3 {
-                            SettingTime = 1;
+                    } else if setting_time != 0 {
+                        setting_time += 1;
+                        if setting_time > 3 {
+                            setting_time = 1;
                         }
                     } else {
-                        if SleepMode == 0 {
-                            SleepMode = 1;
+                        if sleep_mode == 0 {
+                            sleep_mode = 1;
                         } else {
-                            SleepMode = 0;
+                            sleep_mode = 0;
                         }
                     }
                 }
@@ -810,7 +810,7 @@ fn main() -> ! {
         }
 
         (plus_last, minus_last, z_last) = (plus_copy, minus_copy, z_copy);
-        let millisCopy = millis();
+        let millis_copy = millis();
 
         // The next if statement detects and deals with the millis() rollover.
         // This introduces an error of up to  1 s, about every 50 days.
@@ -819,11 +819,11 @@ fn main() -> ! {
         // If you have the optional RTC, this error will be corrected next time we read the
         // time from the RTC.)
 
-        if millisCopy < LastTime {
-            LastTime = 0;
+        if millis_copy < last_time {
+            last_time = 0;
         }
-        if (millisCopy - LastTime) >= 1000 {
-            LastTime += 1000;
+        if (millis_copy - last_time) >= 1000 {
+            last_time += 1000;
 
             // Check to see if any buttons are being held down:
 
@@ -831,19 +831,19 @@ fn main() -> ! {
                 // No buttons are pressed.
                 // Reset the variables that check to see if buttons are being held down.
 
-                HoldTimeSet = 0;
-                HoldOption = 0;
-                HoldAlign = 0;
-                FactoryResetDisable = 1;
+                hold_time_set = 0;
+                hold_option = 0;
+                hold_align = 0;
+                factory_reset_disable = 1;
 
-                if TimeSinceButton < 250 {
-                    TimeSinceButton += 1;
+                if time_since_button < 250 {
+                    time_since_button += 1;
                 }
-                if TimeSinceButton == 10
+                if time_since_button == 10
                 // 10 s after last button released...
                 {
                     if settings.last_saved_brightness != settings.main_bright {
-                        settings.last_saved_brightness = EESaveSettings(
+                        settings.last_saved_brightness = eeprom_save_settings(
                             &mut ep,
                             settings.main_bright,
                             settings.hr_bright,
@@ -860,37 +860,37 @@ fn main() -> ! {
                 if plus.is_low() & minus.is_low()
                 // "+" and "-" are pressed down. "Z" is up.
                 {
-                    HoldAlign += 1; // We are holding for alignment mode.
-                    HoldOption = 0;
-                    HoldTimeSet = 0;
+                    hold_align += 1; // We are holding for alignment mode.
+                    hold_option = 0;
+                    hold_time_set = 0;
                 }
                 if plus.is_low() & z.is_low()
                 // "+" and "Z" are pressed down. "-" is up.
                 {
-                    HoldOption += 1; // We are holding for option setting mode.
-                    HoldTimeSet = 0;
-                    HoldAlign = 0;
+                    hold_option += 1; // We are holding for option setting mode.
+                    hold_time_set = 0;
+                    hold_align = 0;
                 }
                 if z.is_low()
                 // "Z" is pressed down. "+" and "-" are up.
                 {
-                    HoldTimeSet += 1; // We are holding for time setting mode.
-                    HoldOption = 0;
-                    HoldAlign = 0;
+                    hold_time_set += 1; // We are holding for time setting mode.
+                    hold_option = 0;
+                    hold_align = 0;
                 }
             }
 
-            if HoldAlign == 3 {
-                MomentaryOverridePlus = 1; // Override momentary-action of switches
-                MomentaryOverrideMinus = 1; // since we've detected a hold-down condition.
+            if hold_align == 3 {
+                momentary_override_plus = 1; // Override momentary-action of switches
+                momentary_override_minus = 1; // since we've detected a hold-down condition.
 
-                OptionMode = 0;
-                SettingTime = 0;
+                option_mode = 0;
+                setting_time = 0;
 
                 // Hold + and - for 3 s AT POWER ON to restore factory settings.
-                if FactoryResetDisable == 0 {
+                if factory_reset_disable == 0 {
                     settings = Settings::default();
-                    settings.last_saved_brightness = EESaveSettings(
+                    settings.last_saved_brightness = eeprom_save_settings(
                         &mut ep,
                         settings.main_bright,
                         settings.hr_bright,
@@ -902,26 +902,26 @@ fn main() -> ! {
                     AllLEDsOff!(); // Blink LEDs off to indicate restoring data
                     arduino_hal::delay_ms(100);
                 } else {
-                    if AlignMode != 0 {
-                        AlignMode = 0;
+                    if align_mode != 0 {
+                        align_mode = 0;
                     } else {
-                        AlignMode = 1;
-                        AlignValue = 0;
-                        AlignRate = 2;
+                        align_mode = 1;
+                        align_value = 0;
+                        align_rate = 2;
                     }
                 }
             }
 
-            if HoldOption == 3 {
-                MomentaryOverridePlus = 1;
-                MomentaryOverrideZ = 1;
-                AlignMode = 0;
-                SettingTime = 0;
+            if hold_option == 3 {
+                momentary_override_plus = 1;
+                momentary_override_z = 1;
+                align_mode = 0;
+                setting_time = 0;
 
-                if OptionMode != 0 {
-                    OptionMode = 0;
+                if option_mode != 0 {
+                    option_mode = 0;
                     // Save options if exiting option mode!
-                    settings.last_saved_brightness = EESaveSettings(
+                    settings.last_saved_brightness = eeprom_save_settings(
                         &mut ep,
                         settings.main_bright,
                         settings.hr_bright,
@@ -933,26 +933,26 @@ fn main() -> ! {
                     AllLEDsOff!(); // Blink LEDs off to indicate saving data
                     arduino_hal::delay_ms(100);
                 } else {
-                    OptionMode = 1;
-                    StartingOption = 0;
+                    option_mode = 1;
+                    starting_option = 0;
                 }
             }
 
-            if HoldTimeSet == 3 {
-                MomentaryOverrideZ = 1;
+            if hold_time_set == 3 {
+                momentary_override_z = 1;
 
-                if AlignMode + OptionMode + SettingTime != 0 {
+                if align_mode + option_mode + setting_time != 0 {
                     // If we were in any of these modes, let's now return us to normalcy.
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
-                    if SettingTime != 0 && ExtRTC != 0 {
-                        RTCsetTime(&mut i2c, HrNow, MinNow, SecNow);
+                    if setting_time != 0 && ext_rtc != 0 {
+                        rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
                         AllLEDsOff!(); // Blink LEDs off to indicate saving time
                         arduino_hal::delay_ms(100);
                     }
 
-                    if OptionMode != 0 {
+                    if option_mode != 0 {
                         // Save options if exiting option mode!
-                        settings.last_saved_brightness = EESaveSettings(
+                        settings.last_saved_brightness = eeprom_save_settings(
                             &mut ep,
                             settings.main_bright,
                             settings.hr_bright,
@@ -965,180 +965,180 @@ fn main() -> ! {
                         arduino_hal::delay_ms(100);
                     }
 
-                    SettingTime = 0;
+                    setting_time = 0;
                 } else {
                     // Go to setting mode IF and ONLY IF we were in regular-clock-display mode.
-                    SettingTime = 1; // Start with HOURS in setting mode.
+                    setting_time = 1; // Start with HOURS in setting mode.
                 }
 
-                AlignMode = 0;
-                OptionMode = 0;
+                align_mode = 0;
+                option_mode = 0;
             }
 
             // Note: this section could act funny if you hold the buttons for 256 or more seconds.
             // So... um... don't do that.  :P
 
-            SecNow += 1;
+            sec_now += 1;
 
-            if SecNow > 59 {
-                SecNow = 0;
-                MinNow += 1;
+            if sec_now > 59 {
+                sec_now = 0;
+                min_now += 1;
 
-                if (SettingTime == 0) && ExtRTC != 0 {
+                if (setting_time == 0) && ext_rtc != 0 {
                     // Check value at RTC ONCE PER MINUTE, if enabled.
-                    (ExtRTC, SecNow, MinNow, HrNow) =
-                        RTCgetTime(&mut i2c, 1, SecNow, MinNow, HrNow); // Do not check RTC time, if we are in time-setting mode.
+                    (ext_rtc, sec_now, min_now, hr_now) =
+                        rtc_get_time(&mut i2c, 1, sec_now, min_now, hr_now); // Do not check RTC time, if we are in time-setting mode.
                 }
             }
 
-            if MinNow > 59 {
-                MinNow = 0;
-                HrNow += 1;
+            if min_now > 59 {
+                min_now = 0;
+                hr_now += 1;
 
-                if HrNow > 11 {
-                    HrNow = 0;
+                if hr_now > 11 {
+                    hr_now = 0;
                 }
             }
 
-            RefreshTime = 1;
+            refresh_time = 1;
         }
-        if RefreshTime != 0 {
+        if refresh_time != 0 {
             // Calculate which LEDs to light up to give the correct shadows:
 
-            if AlignMode != 0 {
-                if AlignMode & 1 != 0 {
+            if align_mode != 0 {
+                if align_mode & 1 != 0 {
                     // ODD mode, auto-advances
 
                     // Absolute value of AlignRate
-                    let AlignRateAbs: u8 = if AlignRate >= 0 {
-                        (AlignRate + 1) as u8
+                    let align_rate_abs: u8 = if align_rate >= 0 {
+                        (align_rate + 1) as u8
                     } else {
-                        (-AlignRate) as u8
+                        (-align_rate) as u8
                     };
 
                     // Serial.println(AlignRateAbs,DEC);
 
-                    AlignLoopCount += 1;
+                    align_loop_count += 1;
 
-                    let ScaleRate: u8 = if AlignRateAbs > 2 {
+                    let scale_rate: u8 = if align_rate_abs > 2 {
                         10
-                    } else if AlignRateAbs == 2 {
+                    } else if align_rate_abs == 2 {
                         50
                     } else {
                         250
                     };
 
-                    if AlignLoopCount > ScaleRate {
-                        AlignLoopCount = 0;
+                    if align_loop_count > scale_rate {
+                        align_loop_count = 0;
 
-                        if AlignRate >= 0 {
-                            AlignValue = IncrAlignVal(AlignValue, AlignMode);
+                        if align_rate >= 0 {
+                            align_value = incr_align_val(align_value, align_mode);
                         } else {
-                            AlignValue = DecrAlignVal(AlignValue, AlignMode);
+                            align_value = decr_align_val(align_value, align_mode);
                         }
                     }
                 }
 
-                SecDisp = AlignValue + 15; // Offset by 30 s to project *shadow* in the right place.
-                if SecDisp > 29 {
-                    SecDisp -= 30;
+                sec_disp = align_value + 15; // Offset by 30 s to project *shadow* in the right place.
+                if sec_disp > 29 {
+                    sec_disp -= 30;
                 }
-                MinDisp = SecDisp;
-                HrDisp = AlignValue + 6; // Offset by 6 h to project *shadow* in the right place.
+                min_disp = sec_disp;
+                hr_disp = align_value + 6; // Offset by 6 h to project *shadow* in the right place.
 
-                if HrDisp > 11 {
-                    HrDisp -= 12;
+                if hr_disp > 11 {
+                    hr_disp -= 12;
                 }
-            } else if OptionMode != 0 {
+            } else if option_mode != 0 {
                 // Option setting mode
 
-                if StartingOption < START_OPT_TIME_LIMIT {
-                    AlignLoopCount += 1; // Borrowing a counter variable...
+                if starting_option < START_OPT_TIME_LIMIT {
+                    align_loop_count += 1; // Borrowing a counter variable...
 
-                    if AlignLoopCount > 3 {
-                        AlignLoopCount = 0;
-                        StartingOption += 1;
+                    if align_loop_count > 3 {
+                        align_loop_count = 0;
+                        starting_option += 1;
 
-                        if OptionMode == 1
+                        if option_mode == 1
                         // Red (upper) ring color balance
                         {
-                            HrDisp += 1;
-                            if HrDisp > 11 {
-                                HrDisp = 0;
+                            hr_disp += 1;
+                            if hr_disp > 11 {
+                                hr_disp = 0;
                             }
                         }
-                        if OptionMode == 2
+                        if option_mode == 2
                         // Green (middle) ring color balance
                         {
-                            MinDisp += 1;
-                            if MinDisp > 29 {
-                                MinDisp = 0;
+                            min_disp += 1;
+                            if min_disp > 29 {
+                                min_disp = 0;
                             }
                         }
-                        if OptionMode == 3
+                        if option_mode == 3
                         // Blue (lower) ring color balance
                         {
-                            SecDisp += 1;
-                            if SecDisp > 29 {
-                                SecDisp = 0;
+                            sec_disp += 1;
+                            if sec_disp > 29 {
+                                sec_disp = 0;
                             }
                         }
-                        if OptionMode >= 4
+                        if option_mode >= 4
                         // CW vs CCW OR fade mode
                         {
-                            StartingOption = START_OPT_TIME_LIMIT; // Exit this loop
+                            starting_option = START_OPT_TIME_LIMIT; // Exit this loop
                         }
                     }
                 } // end "if (StartingOption < StartOptTimeLimit){}"
 
-                if StartingOption >= START_OPT_TIME_LIMIT {
-                    if OptionMode == 4 {
-                        MinDisp += 1;
-                        if MinDisp > 29 {
-                            MinDisp = 0;
+                if starting_option >= START_OPT_TIME_LIMIT {
+                    if option_mode == 4 {
+                        min_disp += 1;
+                        if min_disp > 29 {
+                            min_disp = 0;
                         }
-                        SecDisp = MinDisp;
+                        sec_disp = min_disp;
                     } else {
-                        (SecDisp, SecNext, MinDisp, MinNext, HrDisp, HrNext) =
-                            normalTimeDisplay(SecNow, MinNow, HrNow);
+                        (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next) =
+                            normal_time_display(sec_now, min_now, hr_now);
                     }
                 }
             } else {
                 // Regular clock display
 
-                (SecDisp, SecNext, MinDisp, MinNext, HrDisp, HrNext) =
-                    normalTimeDisplay(SecNow, MinNow, HrNow);
+                (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next) =
+                    normal_time_display(sec_now, min_now, hr_now);
             }
 
-            h3 = HrDisp;
-            l3 = HrNext;
-            h4 = MinDisp;
-            l4 = MinNext;
-            h5 = SecDisp;
-            l5 = SecNext;
+            h3 = hr_disp;
+            l3 = hr_next;
+            h4 = min_disp;
+            l4 = min_next;
+            h5 = sec_disp;
+            l5 = sec_next;
 
             if settings.ccw {
                 // Counterclockwise
-                if HrDisp != 0 {
-                    h3 = 12 - HrDisp;
+                if hr_disp != 0 {
+                    h3 = 12 - hr_disp;
                 }
-                if HrNext != 0 {
-                    l3 = 12 - HrNext;
+                if hr_next != 0 {
+                    l3 = 12 - hr_next;
                 }
-                if MinDisp != 0 {
-                    h4 = 30 - MinDisp;
+                if min_disp != 0 {
+                    h4 = 30 - min_disp;
                 }
-                if MinNext != 0 {
-                    l4 = 30 - MinNext;
+                if min_next != 0 {
+                    l4 = 30 - min_next;
                 }
-                if SecDisp != 0 {
-                    h5 = 30 - SecDisp;
+                if sec_disp != 0 {
+                    h5 = 30 - sec_disp;
                 }
-                if SecNext != 0 {
-                    l5 = 30 - SecNext;
+                if sec_next != 0 {
+                    l5 = 30 - sec_next;
                 }
 
-                // Serial.print(HrDisp,DEC);
+                // Serial.print(hr_disp,DEC);
                 // Serial.print(", ");
                 // Serial.println(h3,DEC);
             }
@@ -1162,134 +1162,136 @@ fn main() -> ! {
             l5 = SEC_LO[l5 as usize];
         }
 
-        SecFade2 = 0;
-        SecFade1 = 63;
+        sec_fade_2 = 0;
+        sec_fade_1 = 63;
 
-        MinFade2 = 0;
-        MinFade1 = 63;
+        min_fade_2 = 0;
+        min_fade_1 = 63;
 
-        HrFade2 = 0;
-        HrFade1 = 63;
+        hr_fade_2 = 0;
+        hr_fade_1 = 63;
 
-        if SettingTime != 0
+        if setting_time != 0
         // i.e., if (SettingTime is nonzero)
         {
-            HrFade1 = 5;
-            MinFade1 = 5;
-            SecFade1 = 5;
+            hr_fade_1 = 5;
+            min_fade_1 = 5;
+            sec_fade_1 = 5;
 
-            if SettingTime == 1
+            if setting_time == 1
             // hours
             {
-                HrFade1 = TEMP_FADE;
+                hr_fade_1 = TEMP_FADE;
             }
-            if SettingTime == 2
+            if setting_time == 2
             // minutes
             {
-                MinFade1 = TEMP_FADE;
+                min_fade_1 = TEMP_FADE;
             }
-            if SettingTime == 3
+            if setting_time == 3
             // seconds
             {
-                SecFade1 = TEMP_FADE;
+                sec_fade_1 = TEMP_FADE;
             }
-        } else if AlignMode + OptionMode != 0
+        } else if align_mode + option_mode != 0
         // if either...
         {
-            HrFade1 = 0;
-            MinFade1 = 0;
-            SecFade1 = 0;
+            hr_fade_1 = 0;
+            min_fade_1 = 0;
+            sec_fade_1 = 0;
 
-            if AlignMode != 0 {
-                if AlignMode < 3 {
-                    SecFade1 = TEMP_FADE;
-                } else if AlignMode > 4 {
-                    HrFade1 = TEMP_FADE;
+            if align_mode != 0 {
+                if align_mode < 3 {
+                    sec_fade_1 = TEMP_FADE;
+                } else if align_mode > 4 {
+                    hr_fade_1 = TEMP_FADE;
                 } else {
-                    MinFade1 = TEMP_FADE;
+                    min_fade_1 = TEMP_FADE;
                 }
             } else {
                 // Must be OptionMode....
-                if StartingOption < START_OPT_TIME_LIMIT {
-                    if OptionMode == 1 {
-                        HrFade1 = TEMP_FADE;
+                if starting_option < START_OPT_TIME_LIMIT {
+                    if option_mode == 1 {
+                        hr_fade_1 = TEMP_FADE;
                     }
-                    if OptionMode == 2 {
-                        MinFade1 = TEMP_FADE;
+                    if option_mode == 2 {
+                        min_fade_1 = TEMP_FADE;
                     }
-                    if OptionMode == 3 {
-                        SecFade1 = TEMP_FADE;
+                    if option_mode == 3 {
+                        sec_fade_1 = TEMP_FADE;
                     }
-                    if OptionMode == 4
+                    if option_mode == 4
                     // CW vs CCW
                     {
-                        SecFade1 = TEMP_FADE;
-                        MinFade1 = TEMP_FADE;
+                        sec_fade_1 = TEMP_FADE;
+                        min_fade_1 = TEMP_FADE;
                     }
                 } else {
                     // No longer in starting mode.
 
-                    HrFade1 = TEMP_FADE;
-                    MinFade1 = TEMP_FADE;
-                    SecFade1 = TEMP_FADE;
+                    hr_fade_1 = TEMP_FADE;
+                    min_fade_1 = TEMP_FADE;
+                    sec_fade_1 = TEMP_FADE;
 
-                    if OptionMode == 4
+                    if option_mode == 4
                     // CW vs CCW
                     {
-                        HrFade1 = 0;
+                        hr_fade_1 = 0;
                     } else {
-                        (SecFade1, SecFade2, MinFade1, MinFade2, HrFade1, HrFade2) = normalFades(
-                            millisCopy,
-                            LastTime,
+                        (
+                            sec_fade_1, sec_fade_2, min_fade_1, min_fade_2, hr_fade_1, hr_fade_2,
+                        ) = normal_fades(
+                            millis_copy,
+                            last_time,
                             settings.fade_mode,
-                            SecNow,
-                            MinNow,
-                            HrNow,
-                            SecFade1,
-                            SecFade2,
-                            MinFade1,
-                            MinFade2,
-                            HrFade1,
-                            HrFade2,
+                            sec_now,
+                            min_now,
+                            sec_fade_1,
+                            sec_fade_2,
+                            min_fade_1,
+                            min_fade_2,
+                            hr_fade_1,
+                            hr_fade_2,
                         );
                     }
                 }
             }
         } else {
-            (SecFade1, SecFade2, MinFade1, MinFade2, HrFade1, HrFade2) = normalFades(
-                millisCopy,
-                LastTime,
+            (
+                sec_fade_1, sec_fade_2, min_fade_1, min_fade_2, hr_fade_1, hr_fade_2,
+            ) = normal_fades(
+                millis_copy,
+                last_time,
                 settings.fade_mode,
-                SecNow,
-                MinNow,
-                HrNow,
-                SecFade1,
-                SecFade2,
-                MinFade1,
-                MinFade2,
-                HrFade1,
-                HrFade2,
+                sec_now,
+                min_now,
+                sec_fade_1,
+                sec_fade_2,
+                min_fade_1,
+                min_fade_2,
+                hr_fade_1,
+                hr_fade_2,
             );
         }
 
         let mut tempbright: u8 = settings.main_bright;
 
-        if SleepMode != 0 {
+        if sleep_mode != 0 {
             tempbright = 0;
         }
 
-        if VCRmode != 0 {
-            if SecNow & 1 != 0 {
+        if vcr_mode != 0 {
+            if sec_now & 1 != 0 {
                 tempbright = 0;
             }
         }
 
-        d0 = settings.hr_bright * HrFade1 * tempbright >> 7;
-        d1 = settings.hr_bright * HrFade2 * tempbright >> 7;
-        d2 = settings.min_bright * MinFade1 * tempbright >> 7;
-        d3 = settings.min_bright * MinFade2 * tempbright >> 7;
-        d4 = settings.sec_bright * SecFade1 * tempbright >> 7;
-        d5 = settings.sec_bright * SecFade2 * tempbright >> 7;
+        d0 = settings.hr_bright * hr_fade_1 * tempbright >> 7;
+        d1 = settings.hr_bright * hr_fade_2 * tempbright >> 7;
+        d2 = settings.min_bright * min_fade_1 * tempbright >> 7;
+        d3 = settings.min_bright * min_fade_2 * tempbright >> 7;
+        d4 = settings.sec_bright * sec_fade_1 * tempbright >> 7;
+        d5 = settings.sec_bright * sec_fade_2 * tempbright >> 7;
 
         // unsigned long  temp = millis();
 
@@ -1301,49 +1303,49 @@ fn main() -> ! {
             if d0 > 0 {
                 TakeHigh!(h0);
                 TakeLow!(l0);
-                delayTime(d0);
+                delay_time(d0);
                 AllLEDsOff!();
             }
 
             if d1 > 0 {
                 TakeHigh!(h1);
                 TakeLow!(l1);
-                delayTime(d1);
+                delay_time(d1);
                 AllLEDsOff!();
             }
 
             if d2 > 0 {
                 TakeHigh!(h2);
                 TakeLow!(l2);
-                delayTime(d2);
+                delay_time(d2);
                 AllLEDsOff!();
             }
 
             if d3 > 0 {
                 TakeHigh!(h3);
                 TakeLow!(l3);
-                delayTime(d3);
+                delay_time(d3);
                 AllLEDsOff!();
             }
 
             if d4 > 0 {
                 TakeHigh!(h4);
                 TakeLow!(l4);
-                delayTime(d4);
+                delay_time(d4);
                 AllLEDsOff!();
             }
 
             if d5 > 0 {
                 TakeHigh!(h5);
                 TakeLow!(l5);
-                delayTime(d5);
+                delay_time(d5);
                 AllLEDsOff!();
             }
 
             if settings.main_bright < 8 {
-                delayTime((8 - settings.main_bright) << 5);
-                delayTime((8 - settings.main_bright) << 5);
-                delayTime((8 - settings.main_bright) << 5);
+                delay_time((8 - settings.main_bright) << 5);
+                delay_time((8 - settings.main_bright) << 5);
+                delay_time((8 - settings.main_bright) << 5);
             }
 
             i += 1;
@@ -1355,32 +1357,32 @@ fn main() -> ! {
          */
 
         // Can this sync be tried only once per second?
-        if getPCtime(&mut s_rx) {
+        if get_pc_time(&mut s_rx) {
             // try to get time sync from pc
 
             // Set time to that given from PC.
-            MinNow = minute() as u8;
-            SecNow = second() as u8;
-            HrNow = hour() as u8;
+            min_now = minute() as u8;
+            sec_now = second() as u8;
+            hr_now = hour() as u8;
 
-            if HrNow > 11 {
+            if hr_now > 11 {
                 // Convert 24-hour mode to 12-hour mode
-                HrNow -= 12;
+                hr_now -= 12;
             }
 
             // Print confirmation
             ufmt::uwriteln!(s_tx, "Clock synced at: {}", now()).unwrap();
 
-            if timeStatus() == TimeStatus::TimeSet {
+            if time_status() == TimeStatus::TimeSet {
                 // update clocks if time has been synced
 
                 if prevtime != now() {
-                    if ExtRTC != 0 {
-                        RTCsetTime(&mut i2c, HrNow, MinNow, SecNow);
+                    if ext_rtc != 0 {
+                        rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
                     }
 
-                    timeStatus(); // refresh the Date and time properties
-                    digitalClockDisplay(&mut s_tx); // update digital clock
+                    time_status(); // refresh the Date and time properties
+                    digital_clock_display(&mut s_tx); // update digital clock
                     prevtime = now();
                 }
             }
