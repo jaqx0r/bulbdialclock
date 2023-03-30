@@ -32,10 +32,10 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
-mod rtc;
 mod time;
-use crate::rtc::*;
+mod timer;
 use crate::time::*;
+use crate::timer::*;
 use arduino_hal::prelude::*;
 use panic_abort as _;
 

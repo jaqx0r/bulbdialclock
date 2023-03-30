@@ -2,7 +2,7 @@
 // https://github.com/michaelmargolis/arduino_time/blob/master/Time/Time.cpp
 // SAFETY: All unsafe global access, just like the original :D
 
-use crate::rtc::millis;
+use crate::timer::millis;
 
 // Arduino time_t is an unsigned long (32 bit)
 // https://forum.arduino.cc/t/combining-int-and-time-t/907182
