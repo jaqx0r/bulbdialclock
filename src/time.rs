@@ -13,12 +13,12 @@ static mut NEXT_SYNC_TIME: u32 = 0;
 const SYNC_INTERVAL: u32 = 300;
 
 #[derive(PartialEq, Clone, Copy)]
-pub enum timeStatus_t {
-    timeNotSet,
-    timeSet,
+pub enum TimeStatus {
+    TimeNotSet,
+    TimeSet,
 }
 
-static mut STATUS: timeStatus_t = timeStatus_t::timeNotSet;
+static mut STATUS: TimeStatus = TimeStatus::TimeNotSet;
 
 pub fn now() -> u32 {
     while millis() - unsafe { PREV_MILLIS } >= 1000 {
@@ -31,11 +31,11 @@ pub fn now() -> u32 {
 pub fn setTime(t: u32) {
     unsafe { SYS_TIME = t };
     unsafe { NEXT_SYNC_TIME = t + SYNC_INTERVAL };
-    unsafe { STATUS = timeStatus_t::timeSet };
+    unsafe { STATUS = TimeStatus::TimeSet };
     unsafe { PREV_MILLIS = millis() };
 }
 
-pub fn timeStatus() -> timeStatus_t {
+pub fn timeStatus() -> TimeStatus {
     now(); // required to actually update the status
     unsafe { STATUS }
 }
