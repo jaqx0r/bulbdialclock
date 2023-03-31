@@ -32,6 +32,8 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
+// Serial-writer panic handler overflows .text region
+//mod panic;
 mod time;
 mod timer;
 use crate::time::*;
