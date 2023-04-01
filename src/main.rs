@@ -349,77 +349,20 @@ fn rtc_set_time(i2c: &mut arduino_hal::I2c, hour_in: u8, minute_in: u8, second_i
 }
 
 #[must_use]
-fn rtc_get_time(
-    i2c: &mut arduino_hal::I2c,
-    ext_rtc: u8,
-    mut sec_now: u8,
-    mut min_now: u8,
-    mut hr_now: u8,
-) -> (u8, u8, u8, u8) {
+fn rtc_get_time(i2c: &mut arduino_hal::I2c) -> Result<(u8, u8, u8), arduino_hal::i2c::Error> {
     // Read out time from RTC module, if present
     // send request to receive data starting at register 0
-
+    const REG: [u8; 1] = [0];
     let mut buf: [u8; 3] = [0, 0, 0];
-    if let Err(_) = i2c.read(RTC_ADDRESS, &mut buf) {
-        return (0, sec_now, min_now, hr_now);
-    }
+    i2c.write_read(RTC_ADDRESS, &REG, &mut buf)?;
 
-    let mut seconds: i16;
-    let mut minutes: i16;
-    let mut hours: i16;
-    let mut updatetime: u8 = 0;
+    let seconds = ((buf[0] & 0b11110000) >> 4) * 10 + (buf[0] & 0b00001111); // convert BCD to decimal
+    let minutes = ((buf[1] & 0b11110000) >> 4) * 10 + (buf[1] & 0b00001111); // convert BCD to decimal
+    let hours = ((buf[2] & 0b00110000) >> 4) * 10 + (buf[2] & 0b00001111); // convert BCD to decimal (assume 24 hour mode)
 
-    {
-        seconds = buf[0] as i16; // get seconds
-        minutes = buf[1] as i16; // get minutes
-        hours = buf[2] as i16; // get hours
-    }
-
-    // IF time is off by MORE than two seconds, then correct the displayed time.
-    // Otherwise, DO NOT update the time, it may be a sampling error rather than an
-    // actual offset.
-    // Skip checking if minutes == 0. -- the 12:00:00 rollover is distracting,
-    // UNLESS this is the first time running after reset.
-
-    // if (ExtRTC) is equivalent to saying,  "if this has run before"
-
-    seconds = ((seconds & 0b11110000) >> 4) * 10 + (seconds & 0b00001111); // convert BCD to decimal
-    minutes = ((minutes & 0b11110000) >> 4) * 10 + (minutes & 0b00001111); // convert BCD to decimal
-    hours = ((hours & 0b00110000) >> 4) * 10 + (hours & 0b00001111); // convert BCD to decimal (assume 24 hour mode)
-
-    // Optional: report time::
-    // Serial.print(hours); Serial.print(":"); Serial.print(minutes); Serial.print(":"); Serial.println(seconds);
-
-    if (minutes != 0) && (min_now != 0) {
-        let temptime1 = 3600 * hours + 60 * minutes + seconds; // Values read from RTC
-        let temptime2 = 3600 * hr_now as i16 + 60 * min_now as i16 + sec_now as i16; // Internally stored time estimate.
-
-        if temptime1 > temptime2 {
-            if (temptime1 - temptime2) > 2 {
-                updatetime = 1;
-            }
-        } else {
-            if (temptime2 - temptime1) > 2 {
-                updatetime = 1;
-            }
-        }
-    }
-
-    if ext_rtc == 0 {
-        updatetime = 1;
-    }
-    if updatetime != 0 {
-        sec_now = seconds as u8;
-        min_now = minutes as u8;
-        hr_now = hours as u8;
-
-        // Convert 24-hour mode to 12-hour mode
-        if hr_now > 11 {
-            hr_now -= 12;
-        }
-    }
-    (1, sec_now, min_now, hr_now)
+    Ok((seconds, minutes, hours))
 }
+
 #[must_use]
 fn incr_align_val(mut align_value: u8, align_mode: u8) -> u8 {
     align_value += 1;
@@ -468,7 +411,6 @@ fn main() -> ! {
     let mut time_since_button: u8 = 0;
 
     // Modes:
-    let mut ext_rtc: u8;
     let mut sleep_mode: u8 = 0;
 
     let mut vcr_mode: u8 = 1; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
@@ -597,10 +539,18 @@ fn main() -> ! {
     );
 
     // Check if RTC is available, and use it to set the time if so.
-    (ext_rtc, sec_now, min_now, hr_now) = rtc_get_time(&mut i2c, 0, sec_now, min_now, hr_now);
-    // If no RTC is found, no attempt will be made to use it thereafter.
+    let ext_rtc = match rtc_get_time(&mut i2c) {
+        Ok(v) => {
+            (sec_now, min_now, hr_now) = v;
+            true
+        }
+        Err(e) => {
+            ufmt::uwriteln!(&mut s_tx, "i2c error in rtc_get_time: {:?}", e).unwrap();
+            false
+        }
+    };
 
-    if ext_rtc != 0 {
+    if ext_rtc {
         // If time is already set from the RTC...
         vcr_mode = 0;
     }
@@ -946,7 +896,7 @@ fn main() -> ! {
                 if align_mode + option_mode + setting_time != 0 {
                     // If we were in any of these modes, let's now return us to normalcy.
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
-                    if setting_time != 0 && ext_rtc != 0 {
+                    if setting_time != 0 && ext_rtc {
                         rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
                         AllLEDsOff!(); // Blink LEDs off to indicate saving time
                         arduino_hal::delay_ms(100);
@@ -986,10 +936,49 @@ fn main() -> ! {
                 sec_now = 0;
                 min_now += 1;
 
-                if (setting_time == 0) && ext_rtc != 0 {
+                // Do not check RTC time, if we are in time-setting mode.
+                if (setting_time == 0) && ext_rtc {
                     // Check value at RTC ONCE PER MINUTE, if enabled.
-                    (ext_rtc, sec_now, min_now, hr_now) =
-                        rtc_get_time(&mut i2c, 1, sec_now, min_now, hr_now); // Do not check RTC time, if we are in time-setting mode.
+                    if let Ok((seconds, minutes, hours)) = rtc_get_time(&mut i2c) {
+                        // IF time is off by MORE than two seconds, then correct the displayed time.
+                        // Otherwise, DO NOT update the time, it may be a sampling error rather than an
+                        // actual offset.
+                        // Skip checking if minutes == 0. -- the 12:00:00 rollover is distracting,
+                        // UNLESS this is the first time running after reset.
+
+                        let mut updatetime = false;
+                        if (minutes != 0) && (min_now != 0) {
+                            let temptime1: i16 =
+                                3600 * hours as i16 + 60 * minutes as i16 + seconds as i16; // Values read from RTC
+                            let temptime2: i16 =
+                                3600 * hr_now as i16 + 60 * min_now as i16 + sec_now as i16; // Internally stored time estimate.
+
+                            if temptime1 > temptime2 {
+                                if (temptime1 - temptime2) > 2 {
+                                    updatetime = true;
+                                }
+                            } else {
+                                if (temptime2 - temptime1) > 2 {
+                                    updatetime = true;
+                                }
+                            }
+                        }
+
+                        // if (ExtRTC) is equivalent to saying,  "if this has run before"
+                        if !ext_rtc {
+                            updatetime = true;
+                        }
+                        if updatetime {
+                            sec_now = seconds as u8;
+                            min_now = minutes as u8;
+                            hr_now = hours as u8;
+
+                            // Convert 24-hour mode to 12-hour mode
+                            if hr_now > 11 {
+                                hr_now -= 12;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1379,7 +1368,7 @@ fn main() -> ! {
                 // update clocks if time has been synced
 
                 if prevtime != now() {
-                    if ext_rtc != 0 {
+                    if ext_rtc {
                         rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
                     }
 
