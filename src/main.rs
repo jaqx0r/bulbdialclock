@@ -244,35 +244,20 @@ fn eeprom_save_settings(
 
 #[must_use]
 fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8, u8, u8) {
-    let mut sec_disp = sec_now + 30; // Offset by 30 s to project *shadow* in the right place.
-    if sec_disp > 59 {
-        sec_disp -= 60;
-    }
-    sec_disp >>= 1; // Divide by two, since there are 30 LEDs, not 60.
+    // Offset by 30 s to project *shadow* in the right place.
+    // Divide by two, since there are 30 LEDs, not 60.
+    let sec_disp = ((sec_now + 30) % 60) / 2;
+    let sec_next = (sec_disp + 1) % 30;
 
-    let mut sec_next = sec_disp + 1;
-    if sec_next > 29 {
-        sec_next = 0;
-    }
-    let mut min_disp = min_now + 30; // Offset by 30 m to project *shadow* in the right place.
-    if min_disp > 59 {
-        min_disp -= 60;
-    }
-    min_disp >>= 1; // Divide by two, since there are 30 LEDs, not 60.
+    // Offset by 30 m to project *shadow* in the right place.
+    // Divide by two, since there are 30 LEDs, not 60.
+    let min_disp = ((min_now + 30) % 60) / 2;
+    let min_next = (min_disp + 1) % 30;
 
-    let mut min_next = min_disp + 1;
-    if min_next > 29 {
-        min_next = 0;
-    }
-    let mut hr_disp = hr_now + 6; // Offset by 6 h to project *shadow* in the right place.
+    // Offset by 6 h to project *shadow* in the right place.
+    let hr_disp = (hr_now + 6) % 12;
+    let hr_next = (hr_disp + 1) % 12;
 
-    if hr_disp > 11 {
-        hr_disp -= 12;
-    }
-    let mut hr_next = hr_disp + 1;
-    if hr_next > 11 {
-        hr_next = 0;
-    }
     (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next)
 }
 
