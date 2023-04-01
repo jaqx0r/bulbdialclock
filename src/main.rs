@@ -332,19 +332,18 @@ fn normal_fades(
 const RTC_ADDRESS: u8 = 104;
 
 fn rtc_set_time(i2c: &mut arduino_hal::I2c, hour_in: u8, minute_in: u8, second_in: u8) {
-    let ts: u8 = second_in / 10;
-    let os: u8 = second_in - ts * 10;
-    let ss: u8 = (ts << 4) + os;
-
-    let tm: u8 = minute_in / 10;
-    let om: u8 = minute_in - tm * 10;
-    let sm: u8 = (tm << 4) | om;
-
-    let th: u8 = hour_in / 10;
-    let oh: u8 = hour_in - th * 10;
-    let sh: u8 = (th << 4) | oh;
-
-    let buf: [u8; 3] = [ss, sm, sh];
+    macro_rules! bcd_encode {
+        ($v:expr) => {{
+            let t = $v / 10;
+            let o = $v - t * 10;
+            (t << 4) | o
+        }};
+    }
+    let buf: [u8; 3] = [
+        bcd_encode!(second_in),
+        bcd_encode!(minute_in),
+        bcd_encode!(hour_in),
+    ];
     i2c.write(RTC_ADDRESS, &buf).unwrap(); // TODO handle result.
 }
 
