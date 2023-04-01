@@ -141,20 +141,9 @@ type SerialWriter = arduino_hal::hal::usart::UsartWriter<
     arduino_hal::clock::MHz16,
 >;
 
-fn print_digits(s_tx: &mut SerialWriter, digits: u8) {
-    // utility function for digital clock display: prints preceding colon and leading 0
-    ufmt::uwrite!(s_tx, ":").unwrap();
-    if digits < 10 {
-        ufmt::uwrite!(s_tx, "0").unwrap();
-    }
-    ufmt::uwrite!(s_tx, "{}", digits).unwrap();
-}
-
 fn digital_clock_display(s_tx: &mut SerialWriter) {
     // digital clock display of current date and time
-    ufmt::uwrite!(s_tx, "{}", hour()).unwrap();
-    print_digits(s_tx, minute().try_into().unwrap());
-    print_digits(s_tx, second().try_into().unwrap());
+    ufmt::uwrite!(s_tx, "{}:{}:{}", hour(), minute(), second()).unwrap();
     ufmt::uwriteln!(s_tx, " {} {} {}", weekday(), month(), day()).unwrap();
 }
 
