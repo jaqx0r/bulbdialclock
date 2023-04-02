@@ -221,12 +221,12 @@ fn eeprom_save_settings(
     eeprom.write_byte(4, if ccw { 1 } else { 0 });
     eeprom.write_byte(5, if fade_mode { 1 } else { 0 });
 
-    let last_saved_brightness = main_bright;
+    
 
     // Optional: Blink LEDs off to indicate when we're writing to the EEPROM
     // AllLEDsOff!();
     // delay(100);
-    last_saved_brightness
+    main_bright
 }
 
 #[must_use]
