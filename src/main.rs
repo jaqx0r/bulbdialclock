@@ -321,7 +321,6 @@ fn rtc_set_time(i2c: &mut arduino_hal::I2c, hour_in: u8, minute_in: u8, second_i
     i2c.write(RTC_ADDRESS, &buf).unwrap(); // TODO handle result.
 }
 
-#[must_use]
 fn rtc_get_time(i2c: &mut arduino_hal::I2c) -> Result<(u8, u8, u8), arduino_hal::i2c::Error> {
     // Read out time from RTC module, if present
     // send request to receive data starting at register 0
