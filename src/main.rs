@@ -531,7 +531,7 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
 
     loop {
-        let mut refresh_time = align_mode + setting_time + option_mode;
+        let mut refresh_time = (align_mode != 0) || (setting_time != 0) || (option_mode != 0);
 
         let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
 
@@ -964,10 +964,10 @@ fn main() -> ! {
                 }
             }
 
-            refresh_time = 1;
+            refresh_time = true;
         }
 
-        if refresh_time != 0 {
+        if refresh_time {
             // Calculate which LEDs to light up to give the correct shadows:
 
             if align_mode != 0 {
