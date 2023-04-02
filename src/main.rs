@@ -103,11 +103,10 @@ fn delay_time(time: u8) {
     }
 }
 
-type SerialReader = arduino_hal::hal::usart::UsartReader<
+type SerialReader = arduino_hal::usart::UsartReader<
     arduino_hal::pac::USART0,
     arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Input, arduino_hal::hal::port::PD0>,
     arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Output, arduino_hal::hal::port::PD1>,
-    arduino_hal::clock::MHz16,
 >;
 
 fn get_pc_time(s_rx: &mut SerialReader) -> bool {
@@ -122,15 +121,14 @@ fn get_pc_time(s_rx: &mut SerialReader) -> bool {
                         if let Some(d) = char::from(c).to_digit(10) {
                             pctime = (10 * pctime) + d;
                         }
-                        set_time(pctime);
-                        return true;
                     }
                     _ => return false,
-                };
+                }
             }
-            return false;
+            set_time(pctime);
+            true
         }
-        _ => return false,
+        _ => false,
     }
 }
 
