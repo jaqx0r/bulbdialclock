@@ -384,9 +384,9 @@ fn main() -> ! {
     let mut time_since_button: u8 = 0;
 
     // Modes:
-    let mut sleep_mode: u8 = 0;
+    let mut sleep_mode: bool = false;
 
-    let mut vcr_mode: u8 = 1; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
+    let mut vcr_mode: bool = true; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
     let mut factory_reset_disable: u8 = 0; // To make sure that we don't accidentally reset the settings...
 
     let mut setting_time: u8 = 0; // Normally 0.
@@ -525,7 +525,7 @@ fn main() -> ! {
 
     if ext_rtc {
         // If time is already set from the RTC...
-        vcr_mode = 0;
+        vcr_mode = false;
     }
 
     unsafe { avr_device::interrupt::enable() };
@@ -538,7 +538,7 @@ fn main() -> ! {
         if plus_copy != plus_last || minus_copy != minus_last || z_copy != z_last
         // Button change detected
         {
-            vcr_mode = 0; // End once any buttons have been pressed...
+            vcr_mode = false; // End once any buttons have been pressed...
             time_since_button = 0;
 
             if !plus_copy && plus_last {
@@ -548,8 +548,8 @@ fn main() -> ! {
                     momentary_override_plus = 0;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
-                    if sleep_mode != 0 {
-                        sleep_mode = 0;
+                    if sleep_mode {
+                        sleep_mode = false;
                     } else {
                         if align_mode != 0 {
                             if align_mode & 1 != 0
@@ -617,15 +617,15 @@ fn main() -> ! {
             if !minus_copy && minus_last {
                 // "-" Button was pressed and just released!
 
-                vcr_mode = 0; // End once any buttons have been pressed...
+                vcr_mode = false; // End once any buttons have been pressed...
                 time_since_button = 0;
 
                 if momentary_override_minus != 0 {
                     momentary_override_minus = 0;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
-                    if sleep_mode != 0 {
-                        sleep_mode = 0;
+                    if sleep_mode {
+                        sleep_mode = false;
                     } else {
                         if align_mode != 0 {
                             if align_mode & 1 != 0
@@ -697,7 +697,7 @@ fn main() -> ! {
             if !z_copy && z_last {
                 // "Z" Button was pressed and just released!
 
-                vcr_mode = 0; // End once any buttons have been pressed...
+                vcr_mode = false; // End once any buttons have been pressed...
                 time_since_button = 0;
 
                 if momentary_override_z != 0 {
@@ -724,10 +724,10 @@ fn main() -> ! {
                             setting_time = 1;
                         }
                     } else {
-                        if sleep_mode == 0 {
-                            sleep_mode = 1;
+                        if !sleep_mode {
+                            sleep_mode = true;
                         } else {
-                            sleep_mode = 0;
+                            sleep_mode = false;
                         }
                     }
                 }
@@ -966,6 +966,7 @@ fn main() -> ! {
 
             refresh_time = 1;
         }
+
         if refresh_time != 0 {
             // Calculate which LEDs to light up to give the correct shadows:
 
@@ -1240,11 +1241,11 @@ fn main() -> ! {
 
         let mut tempbright: u8 = settings.main_bright;
 
-        if sleep_mode != 0 {
+        if sleep_mode {
             tempbright = 0;
         }
 
-        if vcr_mode != 0 {
+        if vcr_mode {
             if sec_now & 1 != 0 {
                 tempbright = 0;
             }
