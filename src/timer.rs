@@ -10,6 +10,7 @@ const MILLIS_INCREMENT: u32 = PRESCALER * TIMER_COUNTS / 16000;
 static MILLIS_COUNTER: avr_device::interrupt::Mutex<cell::Cell<u32>> =
     avr_device::interrupt::Mutex::new(cell::Cell::new(0));
 
+/// Timer/Counter 0 Compare Match A interrupt service routine.
 #[avr_device::interrupt(atmega168)]
 fn TIMER0_COMPA() {
     avr_device::interrupt::free(|cs| {
@@ -23,7 +24,9 @@ pub fn millis() -> u32 {
     avr_device::interrupt::free(|cs| MILLIS_COUNTER.borrow(cs).get())
 }
 
-// https://blog.rahix.de/005-avr-hal-millis/f
+/// Initialise Timer/Counter 0 for counting milliseconds.
+// https://blog.rahix.de/005-avr-hal-millis/
+// More explanation on the atmega168 timer at https://protostack.com.au/2010/09/timer-interrupts-on-an-atmega168/
 pub fn init_tc0(tc0: arduino_hal::pac::TC0) {
     // Set overflow behaviour of the timer in TCCR0A to Clear Timer on Compare mode.
     // Use TIMER0_COMPA interrupt as a result.
