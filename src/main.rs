@@ -221,8 +221,6 @@ fn eeprom_save_settings(
     eeprom.write_byte(4, if ccw { 1 } else { 0 });
     eeprom.write_byte(5, if fade_mode { 1 } else { 0 });
 
-    
-
     // Optional: Blink LEDs off to indicate when we're writing to the EEPROM
     // AllLEDsOff!();
     // delay(100);
@@ -271,22 +269,16 @@ fn normal_fades(
             sec_fade_1 = 63 - sec_fade_2;
         }
 
-        if min_now & 1 != 0
         // ODD time
-        {
-            if sec_now == 59 {
-                min_fade_2 = sec_fade_2;
-                min_fade_1 = sec_fade_1;
-            }
+        if min_now & 1 != 0 && sec_now == 59 {
+            min_fade_2 = sec_fade_2;
+            min_fade_1 = sec_fade_1;
         }
 
-        if min_now == 59
         // End of the hour, only:
-        {
-            if sec_now == 59 {
-                hr_fade_2 = sec_fade_2;
-                hr_fade_1 = sec_fade_1;
-            }
+        if min_now == 59 && sec_now == 59 {
+            hr_fade_2 = sec_fade_2;
+            hr_fade_1 = sec_fade_1;
         }
     } else {
         // no fading
@@ -536,69 +528,58 @@ fn main() -> ! {
                 if momentary_override_plus != 0 {
                     momentary_override_plus = 0;
                     // Ignore this transition if it was part of a hold sequence.
-                } else {
-                    if sleep_mode {
-                        sleep_mode = false;
-                    } else {
-                        if align_mode != 0 {
-                            if align_mode & 1 != 0
-                            // Odd mode:
-                            {
-                                if align_rate < 2 {
-                                    align_rate += 1;
-                                }
-                            } else {
-                                align_value = incr_align_val(align_value, align_mode);
-                                // Even mode:
-                            }
-                        } else if option_mode != 0 {
-                            if option_mode == 1 {
-                                if settings.hr_bright < 62 {
-                                    settings.hr_bright += 2;
-                                }
-                            }
-                            if option_mode == 2 {
-                                if settings.min_bright < 62 {
-                                    settings.min_bright += 2;
-                                }
-                            }
-                            if option_mode == 3 {
-                                if settings.sec_bright < 62 {
-                                    settings.sec_bright += 2;
-                                }
-                            }
-                            if option_mode == 4 {
-                                settings.ccw = false;
-                            }
-                            if option_mode == 5 {
-                                settings.fade_mode = true;
-                            }
-                        } else if setting_time != 0 {
-                            if setting_time == 1 {
-                                hr_now += 1;
-                                if hr_now > 11 {
-                                    hr_now = 0;
-                                }
-                            }
-                            if setting_time == 2 {
-                                min_now += 1;
-                                if min_now > 59 {
-                                    min_now = 0;
-                                }
-                            }
-                            if setting_time == 3 {
-                                sec_now += 1;
-                                if sec_now > 59 {
-                                    sec_now = 0;
-                                }
-                            }
-                        } else {
-                            // Brightness control mode
-                            settings.main_bright += 1;
-                            if settings.main_bright > 8 {
-                                settings.main_bright = 1;
-                            }
+                } else if sleep_mode {
+                    sleep_mode = false;
+                } else if align_mode != 0 {
+                    if align_mode & 1 != 0 {
+                        // Odd mode:
+                        if align_rate < 2 {
+                            align_rate += 1;
                         }
+                    } else {
+                        // Even mode:
+                        align_value = incr_align_val(align_value, align_mode);
+                    }
+                } else if option_mode != 0 {
+                    if option_mode == 1 && settings.hr_bright < 62 {
+                        settings.hr_bright += 2;
+                    }
+                    if option_mode == 2 && settings.min_bright < 62 {
+                        settings.min_bright += 2;
+                    }
+                    if option_mode == 3 && settings.sec_bright < 62 {
+                        settings.sec_bright += 2;
+                    }
+                    if option_mode == 4 {
+                        settings.ccw = false;
+                    }
+                    if option_mode == 5 {
+                        settings.fade_mode = true;
+                    }
+                } else if setting_time != 0 {
+                    if setting_time == 1 {
+                        hr_now += 1;
+                        if hr_now > 11 {
+                            hr_now = 0;
+                        }
+                    }
+                    if setting_time == 2 {
+                        min_now += 1;
+                        if min_now > 59 {
+                            min_now = 0;
+                        }
+                    }
+                    if setting_time == 3 {
+                        sec_now += 1;
+                        if sec_now > 59 {
+                            sec_now = 0;
+                        }
+                    }
+                } else {
+                    // Brightness control mode
+                    settings.main_bright += 1;
+                    if settings.main_bright > 8 {
+                        settings.main_bright = 1;
                     }
                 }
             }
@@ -612,73 +593,62 @@ fn main() -> ! {
                 if momentary_override_minus != 0 {
                     momentary_override_minus = 0;
                     // Ignore this transition if it was part of a hold sequence.
-                } else {
-                    if sleep_mode {
-                        sleep_mode = false;
-                    } else {
-                        if align_mode != 0 {
-                            if align_mode & 1 != 0
-                            // Odd mode:
-                            {
-                                if align_rate > -3 {
-                                    align_rate -= 1;
-                                }
-                            } else {
-                                align_value = decr_align_val(align_value, align_mode);
-                                // Even mode:
-                            }
-                        } else if option_mode != 0 {
-                            if option_mode == 1 {
-                                if settings.hr_bright > 1 {
-                                    settings.hr_bright -= 2;
-                                }
-                            }
-                            if option_mode == 2 {
-                                if settings.min_bright > 1 {
-                                    settings.min_bright -= 2;
-                                }
-                            }
-                            if option_mode == 3 {
-                                if settings.sec_bright > 1 {
-                                    settings.sec_bright -= 2;
-                                }
-                            }
-                            if option_mode == 4 {
-                                settings.ccw = true;
-                            }
-                            if option_mode == 5 {
-                                settings.fade_mode = false;
-                            }
-                        } else if setting_time != 0 {
-                            if setting_time == 1 {
-                                if hr_now > 0 {
-                                    hr_now -= 1;
-                                } else {
-                                    hr_now = 11;
-                                }
-                            }
-                            if setting_time == 2 {
-                                if min_now > 0 {
-                                    min_now -= 1;
-                                } else {
-                                    min_now = 59;
-                                }
-                            }
-                            if setting_time == 3 {
-                                if sec_now > 0 {
-                                    sec_now -= 1;
-                                } else {
-                                    sec_now = 59;
-                                }
-                            }
-                        } else {
-                            // Normal brightness adjustment mode
-                            if settings.main_bright > 1 {
-                                settings.main_bright -= 1;
-                            } else {
-                                settings.main_bright = 8;
-                            }
+                } else if sleep_mode {
+                    sleep_mode = false;
+                } else if align_mode != 0 {
+                    if align_mode & 1 != 0 {
+                        // Odd mode:
+                        if align_rate > -3 {
+                            align_rate -= 1;
                         }
+                    } else {
+                        // Even mode:
+                        align_value = decr_align_val(align_value, align_mode);
+                    }
+                } else if option_mode != 0 {
+                    if option_mode == 1 && settings.hr_bright > 1 {
+                        settings.hr_bright -= 2;
+                    }
+                    if option_mode == 2 && settings.min_bright > 1 {
+                        settings.min_bright -= 2;
+                    }
+                    if option_mode == 3 && settings.sec_bright > 1 {
+                        settings.sec_bright -= 2;
+                    }
+                    if option_mode == 4 {
+                        settings.ccw = true;
+                    }
+                    if option_mode == 5 {
+                        settings.fade_mode = false;
+                    }
+                } else if setting_time != 0 {
+                    if setting_time == 1 {
+                        if hr_now > 0 {
+                            hr_now -= 1;
+                        } else {
+                            hr_now = 11;
+                        }
+                    }
+                    if setting_time == 2 {
+                        if min_now > 0 {
+                            min_now -= 1;
+                        } else {
+                            min_now = 59;
+                        }
+                    }
+                    if setting_time == 3 {
+                        if sec_now > 0 {
+                            sec_now -= 1;
+                        } else {
+                            sec_now = 59;
+                        }
+                    }
+                } else {
+                    // Normal brightness adjustment mode
+                    if settings.main_bright > 1 {
+                        settings.main_bright -= 1;
+                    } else {
+                        settings.main_bright = 8;
                     }
                 }
             }
@@ -807,14 +777,12 @@ fn main() -> ! {
                     );
                     AllLEDsOff!(); // Blink LEDs off to indicate restoring data
                     arduino_hal::delay_ms(100);
+                } else if align_mode != 0 {
+                    align_mode = 0;
                 } else {
-                    if align_mode != 0 {
-                        align_mode = 0;
-                    } else {
-                        align_mode = 1;
-                        align_value = 0;
-                        align_rate = 2;
-                    }
+                    align_mode = 1;
+                    align_value = 0;
+                    align_rate = 2;
                 }
             }
 
@@ -911,10 +879,8 @@ fn main() -> ! {
                                 if (temptime1 - temptime2) > 2 {
                                     updatetime = true;
                                 }
-                            } else {
-                                if (temptime2 - temptime1) > 2 {
-                                    updatetime = true;
-                                }
+                            } else if (temptime2 - temptime1) > 2 {
+                                updatetime = true;
                             }
                         }
 
@@ -1228,12 +1194,12 @@ fn main() -> ! {
             settings.main_bright
         };
 
-        d0 = settings.hr_bright * hr_fade_1 * tempbright >> 7;
-        d1 = settings.hr_bright * hr_fade_2 * tempbright >> 7;
-        d2 = settings.min_bright * min_fade_1 * tempbright >> 7;
-        d3 = settings.min_bright * min_fade_2 * tempbright >> 7;
-        d4 = settings.sec_bright * sec_fade_1 * tempbright >> 7;
-        d5 = settings.sec_bright * sec_fade_2 * tempbright >> 7;
+        d0 = (settings.hr_bright * hr_fade_1 * tempbright) >> 7;
+        d1 = (settings.hr_bright * hr_fade_2 * tempbright) >> 7;
+        d2 = (settings.min_bright * min_fade_1 * tempbright) >> 7;
+        d3 = (settings.min_bright * min_fade_2 * tempbright) >> 7;
+        d4 = (settings.sec_bright * sec_fade_1 * tempbright) >> 7;
+        d5 = (settings.sec_bright * sec_fade_2 * tempbright) >> 7;
 
         // unsigned long  temp = millis();
 

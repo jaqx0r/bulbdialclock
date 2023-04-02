@@ -12,7 +12,7 @@ static mut NEXT_SYNC_TIME: u32 = 0;
 
 const SYNC_INTERVAL: u32 = 300;
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum TimeStatus {
     TimeNotSet,
     TimeSet,
