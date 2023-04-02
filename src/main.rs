@@ -1239,17 +1239,13 @@ fn main() -> ! {
             );
         }
 
-        let mut tempbright: u8 = settings.main_bright;
-
-        if sleep_mode {
-            tempbright = 0;
-        }
-
-        if vcr_mode {
-            if sec_now & 1 != 0 {
-                tempbright = 0;
-            }
-        }
+        let tempbright: u8 = if sleep_mode {
+            0
+        } else if vcr_mode && (sec_now & 1 != 0) {
+            0
+        } else {
+            settings.main_bright
+        };
 
         d0 = settings.hr_bright * hr_fade_1 * tempbright >> 7;
         d1 = settings.hr_bright * hr_fade_2 * tempbright >> 7;
