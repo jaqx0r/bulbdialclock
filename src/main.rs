@@ -333,37 +333,29 @@ fn rtc_get_time(i2c: &mut arduino_hal::I2c) -> Result<(u8, u8, u8), arduino_hal:
     Ok((seconds, minutes, hours))
 }
 
+/// Increment the alignment value, wrapping past the maximum based on the alignment mode.
 #[must_use]
-fn incr_align_val(mut align_value: u8, align_mode: u8) -> u8 {
-    align_value += 1;
-
-    if align_mode < 5
-    // seconds or minutes
-    {
-        if align_value > 29 {
-            align_value = 0;
-        }
+fn incr_align_val(align_value: u8, align_mode: u8) -> u8 {
+    // seconds or minutes, or hours
+    if (align_mode < 5 && align_value >= 29) || (align_value >= 11) {
+        0
     } else {
-        if align_value > 11 {
-            align_value = 0;
-        }
+        align_value + 1
     }
-    align_value
 }
+
+/// Decrement the alignment value, wrapping past zero based on the alignment mode.
 #[must_use]
-fn decr_align_val(mut align_value: u8, align_mode: u8) -> u8 {
+fn decr_align_val(align_value: u8, align_mode: u8) -> u8 {
     if align_value > 0 {
-        align_value -= 1;
-    } else if align_mode < 5
-    // seconds or minutes
-    {
-        align_value = 29;
-    } else
-    // hours
-    {
-        align_value = 11;
+        align_value - 1
+    } else if align_mode < 5 {
+        // seconds or minutes
+        29
+    } else {
+        // hours
+        11
     }
-    align_value
 }
 
 const START_OPT_TIME_LIMIT: u8 = 30;
