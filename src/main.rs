@@ -692,29 +692,27 @@ fn main() -> ! {
                 if momentary_override_z != 0 {
                     momentary_override_z = 0;
                     // Ignore this transition if it was part of a hold sequence.
-                } else {
-                    if align_mode != 0 {
-                        align_mode += 1;
-                        if align_mode > 6 {
-                            align_mode = 1;
-                        }
-                        align_value = 0;
-                        align_rate = 2;
-                    } else if option_mode != 0 {
-                        option_mode += 1;
-                        starting_option = 0;
-
-                        if option_mode > 5 {
-                            option_mode = 1;
-                        }
-                    } else if setting_time != 0 {
-                        setting_time += 1;
-                        if setting_time > 3 {
-                            setting_time = 1;
-                        }
-                    } else {
-                        sleep_mode = !sleep_mode;
+                } else if align_mode != 0 {
+                    align_mode += 1;
+                    if align_mode > 6 {
+                        align_mode = 1;
                     }
+                    align_value = 0;
+                    align_rate = 2;
+                } else if option_mode != 0 {
+                    option_mode += 1;
+                    starting_option = 0;
+
+                    if option_mode > 5 {
+                        option_mode = 1;
+                    }
+                } else if setting_time != 0 {
+                    setting_time += 1;
+                    if setting_time > 3 {
+                        setting_time = 1;
+                    }
+                } else {
+                    sleep_mode = !sleep_mode;
                 }
             }
         }
@@ -749,20 +747,18 @@ fn main() -> ! {
                 if time_since_button < 250 {
                     time_since_button += 1;
                 }
-                if time_since_button == 10
                 // 10 s after last button released...
+                if time_since_button == 10 && settings.last_saved_brightness != settings.main_bright
                 {
-                    if settings.last_saved_brightness != settings.main_bright {
-                        settings.last_saved_brightness = eeprom_save_settings(
-                            &mut ep,
-                            settings.main_bright,
-                            settings.hr_bright,
-                            settings.min_bright,
-                            settings.sec_bright,
-                            settings.ccw,
-                            settings.fade_mode,
-                        );
-                    }
+                    settings.last_saved_brightness = eeprom_save_settings(
+                        &mut ep,
+                        settings.main_bright,
+                        settings.hr_bright,
+                        settings.min_bright,
+                        settings.sec_bright,
+                        settings.ccw,
+                        settings.fade_mode,
+                    );
                 }
             } else {
                 // Note which buttons are being held down
