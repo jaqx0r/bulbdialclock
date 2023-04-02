@@ -713,11 +713,7 @@ fn main() -> ! {
                             setting_time = 1;
                         }
                     } else {
-                        if !sleep_mode {
-                            sleep_mode = true;
-                        } else {
-                            sleep_mode = false;
-                        }
+                        sleep_mode = !sleep_mode;
                     }
                 }
             }
