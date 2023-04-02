@@ -20,6 +20,7 @@
     "gcc": [
       "-mmcu=atmega168",
         "-Wl,--as-needed",
+        "-Wl,-Map=output.map",
         "-Wl,--verbose"
     ]
   },
