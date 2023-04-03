@@ -39,6 +39,7 @@ mod timer;
 use crate::time::*;
 use crate::timer::*;
 use arduino_hal::prelude::*;
+use core::cmp::Ordering;
 use panic_abort as _;
 
 /// EEPROM variables that are saved:  7
@@ -932,12 +933,10 @@ fn main() -> ! {
 
                     align_loop_count += 1;
 
-                    let scale_rate: u8 = if align_rate_abs > 2 {
-                        10
-                    } else if align_rate_abs == 2 {
-                        50
-                    } else {
-                        250
+                    let scale_rate: u8 = match 2.cmp(&align_rate_abs) {
+                        Ordering::Less => 10,
+                        Ordering::Equal => 50,
+                        Ordering::Greater => 250,
                     };
 
                     if align_loop_count > scale_rate {
@@ -1186,9 +1185,7 @@ fn main() -> ! {
             );
         }
 
-        let tempbright: u8 = if sleep_mode {
-            0
-        } else if vcr_mode && (sec_now & 1 != 0) {
+        let tempbright: u8 = if sleep_mode || (vcr_mode && (sec_now & 1 != 0)) {
             0
         } else {
             settings.main_bright
