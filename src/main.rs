@@ -263,44 +263,36 @@ struct Fades {
     sec_2: u8,
 }
 
-/// Compute the normal fade for a given timestamp.  Fades set the brightness multiplier for the incoming and outgoing LED for each ring.
-#[must_use]
-fn normal_fades(
-    millis: u32,
-    last_time: u32,
-    fade_mode: bool,
-    sec_now: u8,
-    min_now: u8,
-    mut fades: Fades,
-) -> Fades {
-    if fade_mode {
-        // Normal time display
-        if sec_now & 1 != 0
-        // ODD time
-        {
-            fades.sec_2 = (63 * (millis - last_time) / 1000) as u8;
-            fades.sec_1 = 63 - fades.sec_2;
-        }
+impl Fades {
+    /// Compute the normal fade for a given timestamp.  Fades set the brightness multiplier for the incoming and outgoing LED for each ring.
+    fn normal(&mut self, millis: u32, last_time: u32, fade_mode: bool, sec_now: u8, min_now: u8) {
+        if fade_mode {
+            // Normal time display
+            if sec_now & 1 != 0
+            // ODD time
+            {
+                self.sec_2 = (63 * (millis - last_time) / 1000) as u8;
+                self.sec_1 = 63 - self.sec_2;
+            }
 
-        // ODD time
-        if min_now & 1 != 0 && sec_now == 59 {
-            fades.min_2 = fades.sec_2;
-            fades.min_1 = fades.sec_1;
-        }
+            // ODD time
+            if min_now & 1 != 0 && sec_now == 59 {
+                self.min_2 = self.sec_2;
+                self.min_1 = self.sec_1;
+            }
 
-        // End of the hour, only:
-        if min_now == 59 && sec_now == 59 {
-            fades.hr_2 = fades.sec_2;
-            fades.hr_1 = fades.sec_1;
+            // End of the hour, only:
+            if min_now == 59 && sec_now == 59 {
+                self.hr_2 = self.sec_2;
+                self.hr_1 = self.sec_1;
+            }
+        } else {
+            // no fading
+            self.hr_1 = TEMP_FADE;
+            self.min_1 = TEMP_FADE;
+            self.sec_1 = TEMP_FADE;
         }
-    } else {
-        // no fading
-
-        fades.hr_1 = TEMP_FADE;
-        fades.min_1 = TEMP_FADE;
-        fades.sec_1 = TEMP_FADE;
     }
-    fades
 }
 
 // 104 is the DS3231 RTC device address
@@ -1152,26 +1144,12 @@ fn main() -> ! {
                     {
                         fades.hr_1 = 0;
                     } else {
-                        fades = normal_fades(
-                            millis_copy,
-                            last_time,
-                            settings.fade_mode,
-                            sec_now,
-                            min_now,
-                            fades,
-                        );
+                        fades.normal(millis_copy, last_time, settings.fade_mode, sec_now, min_now);
                     }
                 }
             }
         } else {
-            fades = normal_fades(
-                millis_copy,
-                last_time,
-                settings.fade_mode,
-                sec_now,
-                min_now,
-                fades,
-            );
+            fades.normal(millis_copy, last_time, settings.fade_mode, sec_now, min_now);
         }
 
         let tempbright: u8 = if sleep_mode || (vcr_mode && (sec_now & 1 != 0)) {
