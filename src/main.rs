@@ -247,6 +247,23 @@ fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8,
     (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next)
 }
 
+/// Fade multipliers for the hour, minute, and second rings.
+struct Fades {
+    // Hour ring fade multiplier for the outgoing LED.
+    hr_1: u8,
+    // Hour ring fade multiplier for the incoming LED.
+    hr_2: u8,
+    // Minute ring fade multiplier for the outgoing LED.
+    min_1: u8,
+    // Minute ring fade multiplier for the incoming LED.
+    min_2: u8,
+    // Second ring fade multiplier for the outgoing LED.
+    sec_1: u8,
+    // Second ring fade multiplier for the incoming LED.
+    sec_2: u8,
+}
+
+/// Compute the normal fade for a given timestamp.  Fades set the brightness multiplier for the incoming and outgoing LED for each ring.
 #[must_use]
 fn normal_fades(
     millis: u32,
@@ -254,43 +271,36 @@ fn normal_fades(
     fade_mode: bool,
     sec_now: u8,
     min_now: u8,
-    mut sec_fade_1: u8,
-    mut sec_fade_2: u8,
-    mut min_fade_1: u8,
-    mut min_fade_2: u8,
-    mut hr_fade_1: u8,
-    mut hr_fade_2: u8,
-) -> (u8, u8, u8, u8, u8, u8) {
+    mut fades: Fades,
+) -> Fades {
     if fade_mode {
         // Normal time display
         if sec_now & 1 != 0
         // ODD time
         {
-            sec_fade_2 = (63 * (millis - last_time) / 1000) as u8;
-            sec_fade_1 = 63 - sec_fade_2;
+            fades.sec_2 = (63 * (millis - last_time) / 1000) as u8;
+            fades.sec_1 = 63 - fades.sec_2;
         }
 
         // ODD time
         if min_now & 1 != 0 && sec_now == 59 {
-            min_fade_2 = sec_fade_2;
-            min_fade_1 = sec_fade_1;
+            fades.min_2 = fades.sec_2;
+            fades.min_1 = fades.sec_1;
         }
 
         // End of the hour, only:
         if min_now == 59 && sec_now == 59 {
-            hr_fade_2 = sec_fade_2;
-            hr_fade_1 = sec_fade_1;
+            fades.hr_2 = fades.sec_2;
+            fades.hr_1 = fades.sec_1;
         }
     } else {
         // no fading
 
-        hr_fade_1 = TEMP_FADE;
-        min_fade_1 = TEMP_FADE;
-        sec_fade_1 = TEMP_FADE;
+        fades.hr_1 = TEMP_FADE;
+        fades.min_1 = TEMP_FADE;
+        fades.sec_1 = TEMP_FADE;
     }
-    (
-        sec_fade_1, sec_fade_2, min_fade_1, min_fade_2, hr_fade_1, hr_fade_2,
-    )
+    fades
 }
 
 // 104 is the DS3231 RTC device address
@@ -413,13 +423,6 @@ fn main() -> ! {
     let mut d3: u8;
     let mut d4: u8;
     let mut d5: u8;
-    // Initialised in normalFades or at end of RefreshTime conditional
-    let mut hr_fade_1: u8;
-    let mut hr_fade_2: u8;
-    let mut min_fade_1: u8;
-    let mut min_fade_2: u8;
-    let mut sec_fade_1: u8;
-    let mut sec_fade_2: u8;
 
     let mut prevtime: u32 = 0;
 
@@ -1073,115 +1076,101 @@ fn main() -> ! {
             l5 = SEC_LO[l5 as usize];
         }
 
-        sec_fade_2 = 0;
-        sec_fade_1 = 63;
-
-        min_fade_2 = 0;
-        min_fade_1 = 63;
-
-        hr_fade_2 = 0;
-        hr_fade_1 = 63;
+        let mut fades = Fades {
+            sec_2: 0,
+            sec_1: 63,
+            min_2: 0,
+            min_1: 63,
+            hr_2: 0,
+            hr_1: 63,
+        };
 
         if setting_time != 0
         // i.e., if (SettingTime is nonzero)
         {
-            hr_fade_1 = 5;
-            min_fade_1 = 5;
-            sec_fade_1 = 5;
+            fades.hr_1 = 5;
+            fades.min_1 = 5;
+            fades.sec_1 = 5;
 
             if setting_time == 1
             // hours
             {
-                hr_fade_1 = TEMP_FADE;
+                fades.hr_1 = TEMP_FADE;
             }
             if setting_time == 2
             // minutes
             {
-                min_fade_1 = TEMP_FADE;
+                fades.min_1 = TEMP_FADE;
             }
             if setting_time == 3
             // seconds
             {
-                sec_fade_1 = TEMP_FADE;
+                fades.sec_1 = TEMP_FADE;
             }
         } else if align_mode + option_mode != 0
         // if either...
         {
-            hr_fade_1 = 0;
-            min_fade_1 = 0;
-            sec_fade_1 = 0;
+            fades.hr_1 = 0;
+            fades.min_1 = 0;
+            fades.sec_1 = 0;
 
             if align_mode != 0 {
                 if align_mode < 3 {
-                    sec_fade_1 = TEMP_FADE;
+                    fades.sec_1 = TEMP_FADE;
                 } else if align_mode > 4 {
-                    hr_fade_1 = TEMP_FADE;
+                    fades.hr_1 = TEMP_FADE;
                 } else {
-                    min_fade_1 = TEMP_FADE;
+                    fades.min_1 = TEMP_FADE;
                 }
             } else {
                 // Must be OptionMode....
                 if starting_option < START_OPT_TIME_LIMIT {
                     if option_mode == 1 {
-                        hr_fade_1 = TEMP_FADE;
+                        fades.hr_1 = TEMP_FADE;
                     }
                     if option_mode == 2 {
-                        min_fade_1 = TEMP_FADE;
+                        fades.min_1 = TEMP_FADE;
                     }
                     if option_mode == 3 {
-                        sec_fade_1 = TEMP_FADE;
+                        fades.sec_1 = TEMP_FADE;
                     }
                     if option_mode == 4
                     // CW vs CCW
                     {
-                        sec_fade_1 = TEMP_FADE;
-                        min_fade_1 = TEMP_FADE;
+                        fades.sec_1 = TEMP_FADE;
+                        fades.min_1 = TEMP_FADE;
                     }
                 } else {
                     // No longer in starting mode.
 
-                    hr_fade_1 = TEMP_FADE;
-                    min_fade_1 = TEMP_FADE;
-                    sec_fade_1 = TEMP_FADE;
+                    fades.hr_1 = TEMP_FADE;
+                    fades.min_1 = TEMP_FADE;
+                    fades.sec_1 = TEMP_FADE;
 
                     if option_mode == 4
                     // CW vs CCW
                     {
-                        hr_fade_1 = 0;
+                        fades.hr_1 = 0;
                     } else {
-                        (
-                            sec_fade_1, sec_fade_2, min_fade_1, min_fade_2, hr_fade_1, hr_fade_2,
-                        ) = normal_fades(
+                        fades = normal_fades(
                             millis_copy,
                             last_time,
                             settings.fade_mode,
                             sec_now,
                             min_now,
-                            sec_fade_1,
-                            sec_fade_2,
-                            min_fade_1,
-                            min_fade_2,
-                            hr_fade_1,
-                            hr_fade_2,
+                            fades,
                         );
                     }
                 }
             }
         } else {
-            (
-                sec_fade_1, sec_fade_2, min_fade_1, min_fade_2, hr_fade_1, hr_fade_2,
-            ) = normal_fades(
+            fades = normal_fades(
                 millis_copy,
                 last_time,
                 settings.fade_mode,
                 sec_now,
                 min_now,
-                sec_fade_1,
-                sec_fade_2,
-                min_fade_1,
-                min_fade_2,
-                hr_fade_1,
-                hr_fade_2,
+                fades,
             );
         }
 
@@ -1191,12 +1180,12 @@ fn main() -> ! {
             settings.main_bright
         };
 
-        d0 = (settings.hr_bright * hr_fade_1 * tempbright) >> 7;
-        d1 = (settings.hr_bright * hr_fade_2 * tempbright) >> 7;
-        d2 = (settings.min_bright * min_fade_1 * tempbright) >> 7;
-        d3 = (settings.min_bright * min_fade_2 * tempbright) >> 7;
-        d4 = (settings.sec_bright * sec_fade_1 * tempbright) >> 7;
-        d5 = (settings.sec_bright * sec_fade_2 * tempbright) >> 7;
+        d0 = (settings.hr_bright * fades.hr_1 * tempbright) >> 7;
+        d1 = (settings.hr_bright * fades.hr_2 * tempbright) >> 7;
+        d2 = (settings.min_bright * fades.min_1 * tempbright) >> 7;
+        d3 = (settings.min_bright * fades.min_2 * tempbright) >> 7;
+        d4 = (settings.sec_bright * fades.sec_1 * tempbright) >> 7;
+        d5 = (settings.sec_bright * fades.sec_2 * tempbright) >> 7;
 
         // unsigned long  temp = millis();
 
