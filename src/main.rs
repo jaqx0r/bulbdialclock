@@ -1168,10 +1168,8 @@ fn main() -> ! {
         // unsigned long  temp = millis();
 
         // This is the loop where we actually light up the LEDs:
-        let mut i: u8 = 0;
-        while i < 128
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
-        {
+        for _ in 0..128 {
             if d0 > 0 {
                 TakeHigh!(h0);
                 TakeLow!(l0);
@@ -1219,8 +1217,6 @@ fn main() -> ! {
                 delay_time((8 - settings.main_bright) << 5);
                 delay_time((8 - settings.main_bright) << 5);
             }
-
-            i += 1;
         }
 
         /*
