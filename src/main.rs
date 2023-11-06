@@ -885,9 +885,9 @@ fn main() -> ! {
                             updatetime = true;
                         }
                         if updatetime {
-                            sec_now = seconds as u8;
-                            min_now = minutes as u8;
-                            hr_now = hours as u8;
+                            sec_now = seconds;
+                            min_now = minutes;
+                            hr_now = hours;
 
                             // Convert 24-hour mode to 12-hour mode
                             if hr_now > 11 {
