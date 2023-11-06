@@ -165,7 +165,7 @@ const HR_LO: [u8; 12] = [1, 10, 10, 2, 6, 10, 10, 3, 4, 10, 10, 5];
 
 /// Read the EEPROM into settings, or return a default if an error occurs during read.
 #[must_use]
-fn eeprom_read_settings(eeprom: &mut arduino_hal::Eeprom) -> Settings {
+fn eeprom_read_settings(eeprom: &arduino_hal::Eeprom) -> Settings {
     let mut vals: [u8; 7] = [255; 7];
     if eeprom.read(0, &mut vals).is_err() {
         return Settings::default();
@@ -468,7 +468,7 @@ fn main() -> ! {
     );
 
     let mut ep = arduino_hal::Eeprom::new(dp.EEPROM);
-    let mut settings = eeprom_read_settings(&mut ep);
+    let mut settings = eeprom_read_settings(&ep);
 
     // Pull up inputs are HIGH when open, and LOW when pressed.
     let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
