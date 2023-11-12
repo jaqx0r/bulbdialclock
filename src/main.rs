@@ -32,15 +32,20 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
-// Serial-writer panic handler overflows .text region
-//mod panic;
 mod time;
 mod timer;
 use crate::time::*;
 use crate::timer::*;
 use arduino_hal::prelude::*;
 use core::cmp::Ordering;
-use panic_abort as _;
+
+panic_serial::impl_panic_handler!(
+    arduino_hal::usart::UsartWriter<
+    arduino_hal::pac::USART0,
+    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Input, arduino_hal::hal::port::PD0>,
+    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Output, arduino_hal::hal::port::PD1>,
+    >
+);
 
 /// EEPROM variables that are saved:  7
 struct Settings {
@@ -421,7 +426,8 @@ fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 19200);
-    let (mut s_rx, mut s_tx) = serial.split();
+    let (mut s_rx, s_tx) = serial.split();
+    let mut s_tx = share_serial_port_with_panic(s_tx);
 
     init_tc0(dp.TC0);
 
