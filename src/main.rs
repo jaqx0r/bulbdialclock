@@ -254,17 +254,17 @@ fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8,
 
 /// Fade multipliers for the hour, minute, and second rings.
 struct Fades {
-    // Hour ring fade multiplier for the outgoing LED.
+    /// Hour ring fade multiplier for the outgoing LED. 0-63
     hr_1: u8,
-    // Hour ring fade multiplier for the incoming LED.
+    /// Hour ring fade multiplier for the incoming LED. 0-63
     hr_2: u8,
-    // Minute ring fade multiplier for the outgoing LED.
+    /// Minute ring fade multiplier for the outgoing LED. 0-63
     min_1: u8,
-    // Minute ring fade multiplier for the incoming LED.
+    /// Minute ring fade multiplier for the incoming LED. 0-63
     min_2: u8,
-    // Second ring fade multiplier for the outgoing LED.
+    /// Second ring fade multiplier for the outgoing LED. 0-63
     sec_1: u8,
-    // Second ring fade multiplier for the incoming LED.
+    /// Second ring fade multiplier for the incoming LED. 0-63
     sec_2: u8,
 }
 
