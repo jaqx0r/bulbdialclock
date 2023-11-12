@@ -1164,18 +1164,20 @@ fn main() -> ! {
             fades.normal(millis_copy, last_time, settings.fade_mode, sec_now, min_now);
         }
 
-        let tempbright: u8 = if sleep_mode || (vcr_mode && (sec_now & 1 != 0)) {
+        // if setting_time != 0
+        let tempbright: u16 = if sleep_mode || (vcr_mode && (sec_now & 1 != 0)) {
             0
         } else {
-            settings.main_bright
+            settings.main_bright as u16
         };
 
-        d0 = (settings.hr_bright * fades.hr_1 * tempbright) >> 7;
-        d1 = (settings.hr_bright * fades.hr_2 * tempbright) >> 7;
-        d2 = (settings.min_bright * fades.min_1 * tempbright) >> 7;
-        d3 = (settings.min_bright * fades.min_2 * tempbright) >> 7;
-        d4 = (settings.sec_bright * fades.sec_1 * tempbright) >> 7;
-        d5 = (settings.sec_bright * fades.sec_2 * tempbright) >> 7;
+        // 0-63 * 0-63 * 0-8 dynamic range is nearly 16 bits.
+        d0 = ((settings.hr_bright as u16 * fades.hr_1 as u16 * tempbright) >> 7) as u8;
+        d1 = ((settings.hr_bright as u16 * fades.hr_2 as u16 * tempbright) >> 7) as u8;
+        d2 = ((settings.min_bright as u16 * fades.min_1 as u16 * tempbright) >> 7) as u8;
+        d3 = ((settings.min_bright as u16 * fades.min_2 as u16 * tempbright) >> 7) as u8;
+        d4 = ((settings.sec_bright as u16 * fades.sec_1 as u16 * tempbright) >> 7) as u8;
+        d5 = ((settings.sec_bright as u16 * fades.sec_2 as u16 * tempbright) >> 7) as u8;
 
         // unsigned long  temp = millis();
 
