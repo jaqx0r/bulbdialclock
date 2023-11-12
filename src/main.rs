@@ -32,9 +32,7 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
-mod time;
 mod timer;
-use crate::time::*;
 use crate::timer::*;
 use arduino_hal::prelude::*;
 use core::cmp::Ordering;
@@ -115,7 +113,8 @@ type SerialReader = arduino_hal::usart::UsartReader<
     arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Output, arduino_hal::hal::port::PD1>,
 >;
 
-fn get_pc_time(s_rx: &mut SerialReader) -> bool {
+/// Try to read a time from the serial port, returning either a parsed time or nothing.
+fn get_pc_time(s_rx: &mut SerialReader) -> Option<(u8, u8, u8)> {
     // if time sync available from serial port, update time and return true
     match s_rx.read() {
         Ok(TIME_HEADER) => {
@@ -128,27 +127,25 @@ fn get_pc_time(s_rx: &mut SerialReader) -> bool {
                             pctime = (10 * pctime) + d;
                         }
                     }
-                    _ => return false,
+                    _ => return None,
                 }
             }
-            set_time(pctime);
-            true
+            let sec_now: u8 = match (pctime % 60).try_into() {
+                Ok(v) => v,
+                Err(_) => return None,
+            };
+            let min_now: u8 = match ((pctime / 60) % 60).try_into() {
+                Ok(v) => v,
+                Err(_) => return None,
+            };
+            let hr_now: u8 = match ((pctime / 60 / 60) % 24).try_into() {
+                Ok(v) => v,
+                Err(_) => return None,
+            };
+            Some((hr_now, min_now, sec_now))
         }
-        _ => false,
+        _ => None,
     }
-}
-
-type SerialWriter = arduino_hal::hal::usart::UsartWriter<
-    arduino_hal::pac::USART0,
-    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Input, arduino_hal::hal::port::PD0>,
-    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Output, arduino_hal::hal::port::PD1>,
-    arduino_hal::clock::MHz16,
->;
-
-fn digital_clock_display(s_tx: &mut SerialWriter) {
-    // digital clock display of current date and time
-    ufmt::uwrite!(s_tx, "{}:{}:{}", hour(), minute(), second()).unwrap();
-    ufmt::uwriteln!(s_tx, " {} {} {}", weekday(), month(), day()).unwrap();
 }
 
 const SEC_HI: [u8; 30] = [
@@ -421,8 +418,6 @@ fn main() -> ! {
     let mut d4: u8;
     let mut d5: u8;
 
-    let mut prevtime: u32 = 0;
-
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 19200);
@@ -430,8 +425,6 @@ fn main() -> ! {
     let mut s_tx = share_serial_port_with_panic(s_tx);
 
     init_tc0(dp.TC0);
-
-    set_time(0);
 
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
@@ -1239,13 +1232,8 @@ fn main() -> ! {
          */
 
         // Can this sync be tried only once per second?
-        if get_pc_time(&mut s_rx) {
-            // try to get time sync from pc
-
-            // Set time to that given from PC.
-            min_now = minute() as u8;
-            sec_now = second() as u8;
-            hr_now = hour() as u8;
+        if let Some(v) = get_pc_time(&mut s_rx) {
+            (hr_now, min_now, sec_now) = v;
 
             if hr_now > 11 {
                 // Convert 24-hour mode to 12-hour mode
@@ -1253,20 +1241,10 @@ fn main() -> ! {
             }
 
             // Print confirmation
-            ufmt::uwriteln!(s_tx, "Clock synced at: {}", now()).unwrap();
+            ufmt::uwriteln!(s_tx, "Clock synced at: {}:{}:{}", hr_now, min_now, sec_now).unwrap();
 
-            if time_status() == TimeStatus::TimeSet {
-                // update clocks if time has been synced
-
-                if prevtime != now() {
-                    if ext_rtc {
-                        rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
-                    }
-
-                    time_status(); // refresh the Date and time properties
-                    digital_clock_display(&mut s_tx); // update digital clock
-                    prevtime = now();
-                }
+            if ext_rtc {
+                rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
             }
         }
     }
