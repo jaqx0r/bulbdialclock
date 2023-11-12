@@ -436,26 +436,32 @@ fn main() -> ! {
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
     let mut leds = [
-        pins.d10.into_output().downgrade(), // PB2
-        pins.a0.into_output().downgrade(),  // PC0
-        pins.a1.into_output().downgrade(),  // PC1
-        pins.a2.into_output().downgrade(),  // PC2
-        pins.a3.into_output().downgrade(),  // PC3
-        pins.d4.into_output().downgrade(),  // PD4
-        pins.d2.into_output().downgrade(),  // PD2
-        pins.d8.into_output().downgrade(),  // PB0
-        pins.d3.into_output().downgrade(),  // PD3
-        pins.d9.into_output().downgrade(),  // PB1
+        pins.d10.into_output().downgrade(), // 1 - PB2
+        pins.a0.into_output().downgrade(),  // 2 - PC0
+        pins.a1.into_output().downgrade(),  // 3 - PC1
+        pins.a2.into_output().downgrade(),  // 4 - PC2
+        pins.a3.into_output().downgrade(),  // 5 - PC3
+        pins.d4.into_output().downgrade(),  // 6 - PD4
+        pins.d2.into_output().downgrade(),  // 7 - PD2
+        pins.d8.into_output().downgrade(),  // 8 - PB0
+        pins.d3.into_output().downgrade(),  // 9 - PD3
+        pins.d9.into_output().downgrade(),  // 10 - PB1
     ];
 
     macro_rules! TakeHigh {
         ($led:expr) => {{
-            leds[$led as usize].set_high();
+            match $led {
+                1..=10 => leds[$led as usize - 1].set_high(),
+                _ => {}
+            }
         }};
     }
     macro_rules! TakeLow {
         ($led:expr) => {{
-            leds[$led as usize].set_low();
+            match $led {
+                1..=10 => leds[$led as usize - 1].set_low(),
+                _ => {}
+            }
         }};
     }
     macro_rules! AllLEDsOff {
