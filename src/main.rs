@@ -411,12 +411,6 @@ fn main() -> ! {
     let mut l3: u8 = 0;
     let mut l4: u8 = 0;
     let mut l5: u8 = 0;
-    let mut d0: u8;
-    let mut d1: u8;
-    let mut d2: u8;
-    let mut d3: u8;
-    let mut d4: u8;
-    let mut d5: u8;
 
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
@@ -1050,21 +1044,27 @@ fn main() -> ! {
                 // Serial.println(h3,DEC);
             }
 
+            // This Hour
             h0 = HR_HI[h3 as usize];
             l0 = HR_LO[h3 as usize];
 
+            // Next Hour
             h1 = HR_HI[l3 as usize];
             l1 = HR_LO[l3 as usize];
 
+            // This Min
             h2 = MIN_HI[h4 as usize];
             l2 = MIN_LO[h4 as usize];
 
+            // Next Min
             h3 = MIN_HI[l4 as usize];
             l3 = MIN_LO[l4 as usize];
 
+            // This Sec
             h4 = SEC_HI[h5 as usize];
             l4 = SEC_LO[h5 as usize];
 
+            // Next Sec
             h5 = SEC_HI[l5 as usize];
             l5 = SEC_LO[l5 as usize];
         }
@@ -1161,57 +1161,63 @@ fn main() -> ! {
         };
 
         // 0-63 * 0-63 * 0-8 dynamic range is nearly 16 bits.
-        d0 = ((settings.hr_bright as u16 * fades.hr_1 as u16 * tempbright) >> 7) as u8;
-        d1 = ((settings.hr_bright as u16 * fades.hr_2 as u16 * tempbright) >> 7) as u8;
-        d2 = ((settings.min_bright as u16 * fades.min_1 as u16 * tempbright) >> 7) as u8;
-        d3 = ((settings.min_bright as u16 * fades.min_2 as u16 * tempbright) >> 7) as u8;
-        d4 = ((settings.sec_bright as u16 * fades.sec_1 as u16 * tempbright) >> 7) as u8;
-        d5 = ((settings.sec_bright as u16 * fades.sec_2 as u16 * tempbright) >> 7) as u8;
+        let delay_this_hr =
+            ((settings.hr_bright as u16 * fades.hr_1 as u16 * tempbright) >> 7) as u8;
+        let delay_next_hr =
+            ((settings.hr_bright as u16 * fades.hr_2 as u16 * tempbright) >> 7) as u8;
+        let delay_this_min =
+            ((settings.min_bright as u16 * fades.min_1 as u16 * tempbright) >> 7) as u8;
+        let delay_next_min =
+            ((settings.min_bright as u16 * fades.min_2 as u16 * tempbright) >> 7) as u8;
+        let delay_this_sec =
+            ((settings.sec_bright as u16 * fades.sec_1 as u16 * tempbright) >> 7) as u8;
+        let delay_next_sec =
+            ((settings.sec_bright as u16 * fades.sec_2 as u16 * tempbright) >> 7) as u8;
 
         // unsigned long  temp = millis();
 
         // This is the loop where we actually light up the LEDs:
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
         for _ in 0..128 {
-            if d0 > 0 {
+            if delay_this_hr > 0 {
                 TakeHigh!(h0);
                 TakeLow!(l0);
-                delay_time(d0);
+                delay_time(delay_this_hr);
                 AllLEDsOff!();
             }
 
-            if d1 > 0 {
+            if delay_next_hr > 0 {
                 TakeHigh!(h1);
                 TakeLow!(l1);
-                delay_time(d1);
+                delay_time(delay_next_hr);
                 AllLEDsOff!();
             }
 
-            if d2 > 0 {
+            if delay_this_min > 0 {
                 TakeHigh!(h2);
                 TakeLow!(l2);
-                delay_time(d2);
+                delay_time(delay_this_min);
                 AllLEDsOff!();
             }
 
-            if d3 > 0 {
+            if delay_next_min > 0 {
                 TakeHigh!(h3);
                 TakeLow!(l3);
-                delay_time(d3);
+                delay_time(delay_next_min);
                 AllLEDsOff!();
             }
 
-            if d4 > 0 {
+            if delay_this_sec > 0 {
                 TakeHigh!(h4);
                 TakeLow!(l4);
-                delay_time(d4);
+                delay_time(delay_this_sec);
                 AllLEDsOff!();
             }
 
-            if d5 > 0 {
+            if delay_next_sec > 0 {
                 TakeHigh!(h5);
                 TakeLow!(l5);
-                delay_time(d5);
+                delay_time(delay_next_sec);
                 AllLEDsOff!();
             }
 
