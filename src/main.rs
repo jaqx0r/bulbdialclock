@@ -497,6 +497,7 @@ fn main() -> ! {
     let ext_rtc = match rtc_get_time(&mut i2c) {
         Ok(v) => {
             (sec_now, min_now, hr_now) = v;
+            vcr_mode = false;
             true
         }
         Err(e) => {
@@ -504,11 +505,6 @@ fn main() -> ! {
             false
         }
     };
-
-    if ext_rtc {
-        // If time is already set from the RTC...
-        vcr_mode = false;
-    }
 
     unsafe { avr_device::interrupt::enable() };
 
