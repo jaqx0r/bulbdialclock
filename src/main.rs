@@ -399,18 +399,18 @@ fn main() -> ! {
     let mut min_next: u8 = 0;
     let mut hr_next: u8 = 0;
     // Initialised at end of RefreshTime conditional
-    let mut h0: u8 = 0;
-    let mut h1: u8 = 0;
-    let mut h2: u8 = 0;
-    let mut h3: u8 = 0;
-    let mut h4: u8 = 0;
-    let mut h5: u8 = 0;
-    let mut l0: u8 = 0;
-    let mut l1: u8 = 0;
-    let mut l2: u8 = 0;
-    let mut l3: u8 = 0;
-    let mut l4: u8 = 0;
-    let mut l5: u8 = 0;
+    let mut hr_disp_hi: u8 = 0;
+    let mut hr_next_hi: u8 = 0;
+    let mut min_disp_hi: u8 = 0;
+    let mut min_next_hi: u8 = 0;
+    let mut sec_disp_hi: u8 = 0;
+    let mut sec_next_hi: u8 = 0;
+    let mut hr_disp_lo: u8 = 0;
+    let mut hr_next_lo: u8 = 0;
+    let mut min_disp_lo: u8 = 0;
+    let mut min_next_lo: u8 = 0;
+    let mut sec_disp_lo: u8 = 0;
+    let mut sec_next_lo: u8 = 0;
 
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
@@ -1033,28 +1033,28 @@ fn main() -> ! {
             };
 
             // This Hour
-            h0 = HR_HI[hr_disp_offset as usize];
-            l0 = HR_LO[hr_disp_offset as usize];
+            hr_disp_hi = HR_HI[hr_disp_offset as usize];
+            hr_disp_lo = HR_LO[hr_disp_offset as usize];
 
             // Next Hour
-            h1 = HR_HI[hr_next_offset as usize];
-            l1 = HR_LO[hr_next_offset as usize];
+            hr_next_hi = HR_HI[hr_next_offset as usize];
+            hr_next_lo = HR_LO[hr_next_offset as usize];
 
             // This Min
-            h2 = MIN_HI[min_disp_offset as usize];
-            l2 = MIN_LO[min_disp_offset as usize];
+            min_disp_hi = MIN_HI[min_disp_offset as usize];
+            min_disp_lo = MIN_LO[min_disp_offset as usize];
 
             // Next Min
-            h3 = MIN_HI[min_next_offset as usize];
-            l3 = MIN_LO[min_next_offset as usize];
+            min_next_hi = MIN_HI[min_next_offset as usize];
+            min_next_lo = MIN_LO[min_next_offset as usize];
 
             // This Sec
-            h4 = SEC_HI[sec_disp_offset as usize];
-            l4 = SEC_LO[sec_disp_offset as usize];
+            sec_disp_hi = SEC_HI[sec_disp_offset as usize];
+            sec_disp_lo = SEC_LO[sec_disp_offset as usize];
 
             // Next Sec
-            h5 = SEC_HI[sec_next_offset as usize];
-            l5 = SEC_LO[sec_next_offset as usize];
+            sec_next_hi = SEC_HI[sec_next_offset as usize];
+            sec_next_lo = SEC_LO[sec_next_offset as usize];
         }
 
         let mut fades = Fades {
@@ -1149,17 +1149,17 @@ fn main() -> ! {
         };
 
         // 0-63 * 0-63 * 0-8 dynamic range is nearly 16 bits.
-        let delay_this_hr =
+        let hr_disp_delay =
             ((settings.hr_bright as u16 * fades.hr_1 as u16 * tempbright) >> 7) as u8;
-        let delay_next_hr =
+        let hr_next_delay =
             ((settings.hr_bright as u16 * fades.hr_2 as u16 * tempbright) >> 7) as u8;
-        let delay_this_min =
+        let min_disp_delay =
             ((settings.min_bright as u16 * fades.min_1 as u16 * tempbright) >> 7) as u8;
-        let delay_next_min =
+        let min_next_delay =
             ((settings.min_bright as u16 * fades.min_2 as u16 * tempbright) >> 7) as u8;
-        let delay_this_sec =
+        let sec_disp_delay =
             ((settings.sec_bright as u16 * fades.sec_1 as u16 * tempbright) >> 7) as u8;
-        let delay_next_sec =
+        let sec_next_delay =
             ((settings.sec_bright as u16 * fades.sec_2 as u16 * tempbright) >> 7) as u8;
 
         // unsigned long  temp = millis();
@@ -1167,45 +1167,45 @@ fn main() -> ! {
         // This is the loop where we actually light up the LEDs:
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
         for _ in 0..128 {
-            if delay_this_hr > 0 {
-                TakeHigh!(h0);
-                TakeLow!(l0);
-                delay_time(delay_this_hr);
+            if hr_disp_delay > 0 {
+                TakeHigh!(hr_disp_hi);
+                TakeLow!(hr_disp_lo);
+                delay_time(hr_disp_delay);
                 AllLEDsOff!();
             }
 
-            if delay_next_hr > 0 {
-                TakeHigh!(h1);
-                TakeLow!(l1);
-                delay_time(delay_next_hr);
+            if hr_next_delay > 0 {
+                TakeHigh!(hr_next_hi);
+                TakeLow!(hr_next_lo);
+                delay_time(hr_next_delay);
                 AllLEDsOff!();
             }
 
-            if delay_this_min > 0 {
-                TakeHigh!(h2);
-                TakeLow!(l2);
-                delay_time(delay_this_min);
+            if min_disp_delay > 0 {
+                TakeHigh!(min_disp_hi);
+                TakeLow!(min_disp_lo);
+                delay_time(min_disp_delay);
                 AllLEDsOff!();
             }
 
-            if delay_next_min > 0 {
-                TakeHigh!(h3);
-                TakeLow!(l3);
-                delay_time(delay_next_min);
+            if min_next_delay > 0 {
+                TakeHigh!(min_next_hi);
+                TakeLow!(min_next_lo);
+                delay_time(min_next_delay);
                 AllLEDsOff!();
             }
 
-            if delay_this_sec > 0 {
-                TakeHigh!(h4);
-                TakeLow!(l4);
-                delay_time(delay_this_sec);
+            if sec_disp_delay > 0 {
+                TakeHigh!(sec_disp_hi);
+                TakeLow!(sec_disp_lo);
+                delay_time(sec_disp_delay);
                 AllLEDsOff!();
             }
 
-            if delay_next_sec > 0 {
-                TakeHigh!(h5);
-                TakeLow!(l5);
-                delay_time(delay_next_sec);
+            if sec_next_delay > 0 {
+                TakeHigh!(sec_next_hi);
+                TakeLow!(sec_next_lo);
+                delay_time(sec_next_delay);
                 AllLEDsOff!();
             }
 
