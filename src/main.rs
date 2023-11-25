@@ -267,7 +267,7 @@ struct Fades {
 
 impl Fades {
     /// Compute the normal fade for a given timestamp.  Fades set the brightness multiplier for the incoming and outgoing LED for each ring.
-    fn normal(&mut self, millis: u32, last_time: u32, fade_mode: bool, sec_now: u8, min_now: u8) {
+    fn normal(&mut self, millis: u16, last_time: u16, fade_mode: bool, sec_now: u8, min_now: u8) {
         if fade_mode {
             // Normal time display
             if sec_now & 1 != 0
@@ -366,7 +366,7 @@ fn main() -> ! {
     let mut min_disp: u8 = 0;
     let mut sec_disp: u8 = 0;
 
-    let mut last_time: u32 = 0;
+    let mut last_time: u16 = 0;
     let mut time_since_button: u8 = 0;
 
     // Modes:

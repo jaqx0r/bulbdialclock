@@ -5,9 +5,9 @@ use core::cell;
 
 const PRESCALER: u32 = 1024;
 const TIMER_COUNTS: u32 = 125;
-const MILLIS_INCREMENT: u32 = PRESCALER * TIMER_COUNTS / 16000;
+const MILLIS_INCREMENT: u16 = (PRESCALER * TIMER_COUNTS / 16000) as u16;
 
-static MILLIS_COUNTER: avr_device::interrupt::Mutex<cell::Cell<u32>> =
+static MILLIS_COUNTER: avr_device::interrupt::Mutex<cell::Cell<u16>> =
     avr_device::interrupt::Mutex::new(cell::Cell::new(0));
 
 /// Timer/Counter 0 Compare Match A interrupt service routine.
@@ -20,7 +20,7 @@ fn TIMER0_COMPA() {
     })
 }
 
-pub fn millis() -> u32 {
+pub fn millis() -> u16 {
     avr_device::interrupt::free(|cs| MILLIS_COUNTER.borrow(cs).get())
 }
 
