@@ -1012,62 +1012,49 @@ fn main() -> ! {
                     normal_time_display(sec_now, min_now, hr_now);
             }
 
-            h3 = hr_disp;
-            l3 = hr_next;
-            h4 = min_disp;
-            l4 = min_next;
-            h5 = sec_disp;
-            l5 = sec_next;
-
-            if settings.ccw {
-                // Counterclockwise
-                if hr_disp != 0 {
-                    h3 = 12 - hr_disp;
-                }
-                if hr_next != 0 {
-                    l3 = 12 - hr_next;
-                }
-                if min_disp != 0 {
-                    h4 = 30 - min_disp;
-                }
-                if min_next != 0 {
-                    l4 = 30 - min_next;
-                }
-                if sec_disp != 0 {
-                    h5 = 30 - sec_disp;
-                }
-                if sec_next != 0 {
-                    l5 = 30 - sec_next;
-                }
-
-                // Serial.print(hr_disp,DEC);
-                // Serial.print(", ");
-                // Serial.println(h3,DEC);
-            }
+            let (
+                hr_disp_offset,
+                hr_next_offset,
+                min_disp_offset,
+                min_next_offset,
+                sec_disp_offset,
+                sec_next_offset,
+            ) = if settings.ccw {
+                (
+                    12 - hr_disp,
+                    12 - hr_next,
+                    30 - min_disp,
+                    30 - min_next,
+                    30 - sec_disp,
+                    30 - sec_next,
+                )
+            } else {
+                (hr_disp, hr_next, min_disp, min_next, sec_disp, sec_next)
+            };
 
             // This Hour
-            h0 = HR_HI[h3 as usize];
-            l0 = HR_LO[h3 as usize];
+            h0 = HR_HI[hr_disp_offset as usize];
+            l0 = HR_LO[hr_disp_offset as usize];
 
             // Next Hour
-            h1 = HR_HI[l3 as usize];
-            l1 = HR_LO[l3 as usize];
+            h1 = HR_HI[hr_next_offset as usize];
+            l1 = HR_LO[hr_next_offset as usize];
 
             // This Min
-            h2 = MIN_HI[h4 as usize];
-            l2 = MIN_LO[h4 as usize];
+            h2 = MIN_HI[min_disp_offset as usize];
+            l2 = MIN_LO[min_disp_offset as usize];
 
             // Next Min
-            h3 = MIN_HI[l4 as usize];
-            l3 = MIN_LO[l4 as usize];
+            h3 = MIN_HI[min_next_offset as usize];
+            l3 = MIN_LO[min_next_offset as usize];
 
             // This Sec
-            h4 = SEC_HI[h5 as usize];
-            l4 = SEC_LO[h5 as usize];
+            h4 = SEC_HI[sec_disp_offset as usize];
+            l4 = SEC_LO[sec_disp_offset as usize];
 
             // Next Sec
-            h5 = SEC_HI[l5 as usize];
-            l5 = SEC_LO[l5 as usize];
+            h5 = SEC_HI[sec_next_offset as usize];
+            l5 = SEC_LO[sec_next_offset as usize];
         }
 
         let mut fades = Fades {
