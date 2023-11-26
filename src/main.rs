@@ -34,7 +34,7 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
 mod timer;
 use crate::timer::*;
-use arduino_hal::prelude::*;
+use arduino_hal::{hal::port, prelude::*};
 use core::cmp::Ordering;
 
 panic_serial::impl_panic_handler!(
@@ -225,7 +225,7 @@ fn eeprom_save_settings(
     eeprom.write_byte(5, if fade_mode { 1 } else { 0 });
 
     // Optional: Blink LEDs off to indicate when we're writing to the EEPROM
-    // AllLEDsOff!();
+    // leds.all_off();
     // delay(100);
     main_bright
 }
@@ -355,6 +355,66 @@ fn decr_align_val(align_value: u8, align_mode: u8) -> u8 {
     }
 }
 
+struct Leds {
+    d10: port::Pin<port::mode::Output, port::PB2>,
+    a0: port::Pin<port::mode::Output, port::PC0>,
+    a1: port::Pin<port::mode::Output, port::PC1>,
+    a2: port::Pin<port::mode::Output, port::PC2>,
+    a3: port::Pin<port::mode::Output, port::PC3>,
+    d4: port::Pin<port::mode::Output, port::PD4>,
+    d2: port::Pin<port::mode::Output, port::PD2>,
+    d8: port::Pin<port::mode::Output, port::PB0>,
+    d3: port::Pin<port::mode::Output, port::PD3>,
+    d9: port::Pin<port::mode::Output, port::PB1>,
+}
+
+impl Leds {
+    fn take_high(&mut self, led: u8) {
+        match led {
+            1 => self.d10.set_high(),
+            2 => self.a0.set_high(),
+            3 => self.a1.set_high(),
+            4 => self.a2.set_high(),
+            5 => self.a3.set_high(),
+            6 => self.d4.set_high(),
+            7 => self.d2.set_high(),
+            8 => self.d8.set_high(),
+            9 => self.d3.set_high(),
+            10 => self.d9.set_high(),
+            _ => (),
+        };
+    }
+
+    fn take_low(&mut self, led: u8) {
+        match led {
+            1 => self.d10.set_low(),
+            2 => self.a0.set_low(),
+            3 => self.a1.set_low(),
+            4 => self.a2.set_low(),
+            5 => self.a3.set_low(),
+            6 => self.d4.set_low(),
+            7 => self.d2.set_low(),
+            8 => self.d8.set_low(),
+            9 => self.d3.set_low(),
+            10 => self.d9.set_low(),
+            _ => (),
+        };
+    }
+
+    fn all_off(&mut self) {
+        self.d10.set_low();
+        self.a0.set_low();
+        self.a1.set_low();
+        self.a2.set_low();
+        self.a3.set_low();
+        self.d4.set_low();
+        self.d2.set_low();
+        self.d8.set_low();
+        self.d3.set_low();
+        self.d9.set_low();
+    }
+}
+
 const START_OPT_TIME_LIMIT: u8 = 30;
 
 #[arduino_hal::entry]
@@ -415,49 +475,25 @@ fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 19200);
-    let (mut s_rx, s_tx) = serial.split();
-    let mut s_tx = share_serial_port_with_panic(s_tx);
+    let (mut s_rx, mut s_tx) = serial.split();
+    //let mut s_tx = share_serial_port_with_panic(s_tx);
 
     init_tc0(dp.TC0);
 
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
-    let mut leds = [
-        pins.d10.into_output().downgrade(), // 1 - PB2
-        pins.a0.into_output().downgrade(),  // 2 - PC0
-        pins.a1.into_output().downgrade(),  // 3 - PC1
-        pins.a2.into_output().downgrade(),  // 4 - PC2
-        pins.a3.into_output().downgrade(),  // 5 - PC3
-        pins.d4.into_output().downgrade(),  // 6 - PD4
-        pins.d2.into_output().downgrade(),  // 7 - PD2
-        pins.d8.into_output().downgrade(),  // 8 - PB0
-        pins.d3.into_output().downgrade(),  // 9 - PD3
-        pins.d9.into_output().downgrade(),  // 10 - PB1
-    ];
-
-    macro_rules! TakeHigh {
-        ($led:expr) => {{
-            match $led {
-                1..=10 => leds[$led as usize - 1].set_high(),
-                _ => {}
-            }
-        }};
-    }
-    macro_rules! TakeLow {
-        ($led:expr) => {{
-            match $led {
-                1..=10 => leds[$led as usize - 1].set_low(),
-                _ => {}
-            }
-        }};
-    }
-    macro_rules! AllLEDsOff {
-        () => {{
-            for led in leds.iter_mut() {
-                led.set_low();
-            }
-        }};
-    }
+    let mut leds = Leds {
+        d10: pins.d10.into_output(), // 1 - PB2
+        a0: pins.a0.into_output(),   // 2 - PC0
+        a1: pins.a1.into_output(),   // 3 - PC1
+        a2: pins.a2.into_output(),   // 4 - PC2
+        a3: pins.a3.into_output(),   // 5 - PC3
+        d4: pins.d4.into_output(),   // 6 - PD4
+        d2: pins.d2.into_output(),   // 7 - PD2
+        d8: pins.d8.into_output(),   // 8 - PB0
+        d3: pins.d3.into_output(),   // 9 - PD3
+        d9: pins.d9.into_output(),   // 10 - PB1
+    };
 
     // Pull-up resistors for buttons
     let (plus, minus, z) = (
@@ -767,7 +803,7 @@ fn main() -> ! {
                         settings.ccw,
                         settings.fade_mode,
                     );
-                    AllLEDsOff!(); // Blink LEDs off to indicate restoring data
+                    leds.all_off(); // Blink LEDs off to indicate restoring data
                     arduino_hal::delay_ms(100);
                 } else if align_mode != 0 {
                     align_mode = 0;
@@ -796,7 +832,7 @@ fn main() -> ! {
                         settings.ccw,
                         settings.fade_mode,
                     );
-                    AllLEDsOff!(); // Blink LEDs off to indicate saving data
+                    leds.all_off(); // Blink LEDs off to indicate saving data
                     arduino_hal::delay_ms(100);
                 } else {
                     option_mode = 1;
@@ -812,7 +848,7 @@ fn main() -> ! {
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
                     if setting_time != 0 && ext_rtc {
                         rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
-                        AllLEDsOff!(); // Blink LEDs off to indicate saving time
+                        leds.all_off(); // Blink LEDs off to indicate saving time
                         arduino_hal::delay_ms(100);
                     }
 
@@ -827,7 +863,7 @@ fn main() -> ! {
                             settings.ccw,
                             settings.fade_mode,
                         );
-                        AllLEDsOff!(); // Blink LEDs off to indicate saving data
+                        leds.all_off(); // Blink LEDs off to indicate saving data
                         arduino_hal::delay_ms(100);
                     }
 
@@ -1168,45 +1204,45 @@ fn main() -> ! {
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
         for _ in 0..128 {
             if hr_disp_delay > 0 {
-                TakeHigh!(hr_disp_hi);
-                TakeLow!(hr_disp_lo);
+                leds.take_high(hr_disp_hi);
+                leds.take_low(hr_disp_lo);
                 delay_time(hr_disp_delay);
-                AllLEDsOff!();
+                leds.all_off();
             }
 
             if hr_next_delay > 0 {
-                TakeHigh!(hr_next_hi);
-                TakeLow!(hr_next_lo);
+                leds.take_high(hr_next_hi);
+                leds.take_low(hr_next_lo);
                 delay_time(hr_next_delay);
-                AllLEDsOff!();
+                leds.all_off();
             }
 
             if min_disp_delay > 0 {
-                TakeHigh!(min_disp_hi);
-                TakeLow!(min_disp_lo);
+                leds.take_high(min_disp_hi);
+                leds.take_low(min_disp_lo);
                 delay_time(min_disp_delay);
-                AllLEDsOff!();
+                leds.all_off();
             }
 
             if min_next_delay > 0 {
-                TakeHigh!(min_next_hi);
-                TakeLow!(min_next_lo);
+                leds.take_high(min_next_hi);
+                leds.take_low(min_next_lo);
                 delay_time(min_next_delay);
-                AllLEDsOff!();
+                leds.all_off();
             }
 
             if sec_disp_delay > 0 {
-                TakeHigh!(sec_disp_hi);
-                TakeLow!(sec_disp_lo);
+                leds.take_high(sec_disp_hi);
+                leds.take_low(sec_disp_lo);
                 delay_time(sec_disp_delay);
-                AllLEDsOff!();
+                leds.all_off();
             }
 
             if sec_next_delay > 0 {
-                TakeHigh!(sec_next_hi);
-                TakeLow!(sec_next_lo);
+                leds.take_high(sec_next_hi);
+                leds.take_low(sec_next_lo);
                 delay_time(sec_next_delay);
-                AllLEDsOff!();
+                leds.all_off();
             }
 
             if settings.main_bright < 8 {
