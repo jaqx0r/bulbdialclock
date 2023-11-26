@@ -37,6 +37,9 @@ use crate::timer::*;
 use arduino_hal::{hal::port, prelude::*};
 use core::cmp::Ordering;
 
+#[cfg(not(feature = "panic-serial"))]
+use panic_halt as _;
+#[cfg(feature = "panic-serial")]
 panic_serial::impl_panic_handler!(
     arduino_hal::usart::UsartWriter<
     arduino_hal::pac::USART0,
@@ -475,8 +478,17 @@ fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 19200);
-    let (mut s_rx, mut s_tx) = serial.split();
-    //let mut s_tx = share_serial_port_with_panic(s_tx);
+
+    let (mut s_rx, mut s_tx) = {
+        #[cfg(feature = "panic-serial")]
+        {
+            let (s_rx, s_tx) = serial.split();
+            let s_tx = share_serial_port_with_panic(s_tx);
+            (s_rx, s_tx)
+        }
+        #[cfg(not(feature = "panic-serial"))]
+        serial.split()
+    };
 
     init_tc0(dp.TC0);
 

@@ -78,6 +78,7 @@ dependencies = [
  "avr-device",
  "embedded-hal",
  "nb 0.1.3",
+ "panic-halt",
  "panic-serial",
  "ufmt 0.1.2",
 ]
@@ -124,6 +125,12 @@ name = "nb"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
+
+[[package]]
+name = "panic-halt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de96540e0ebde571dc55c73d60ef407c653844e6f9a1e2fdbd40c07b9252d812"
 
 [[package]]
 name = "panic-serial"
