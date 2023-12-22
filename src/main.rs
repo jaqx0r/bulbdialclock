@@ -1196,7 +1196,8 @@ fn main() -> ! {
             settings.main_bright as u16
         };
 
-        // 0-63 * 0-63 * 0-8 dynamic range is nearly 16 bits.
+        // 0-63 (6) * 0-63 (6) * 0-8 (3) dynamic range is 15 bits.
+        // Shifted 7 puts the high bits into a u8.
         let hr_disp_delay =
             ((settings.hr_bright as u16 * fades.hr_1 as u16 * tempbright) >> 7) as u8;
         let hr_next_delay =
