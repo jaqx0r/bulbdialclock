@@ -31,6 +31,11 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_std]
 #![no_main]
 #![feature(abi_avr_interrupt)]
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(dead_code)]
+#![allow(unused_imports)]
 
 mod timer;
 use crate::timer::*;
