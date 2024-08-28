@@ -425,6 +425,16 @@ impl Leds {
 
 const START_OPT_TIME_LIMIT: u8 = 30;
 
+/// SettingTime enumaretes the time setting states.
+#[derive(PartialEq)]
+enum SettingTime {
+    No,
+    Hours,
+    Minutes,
+    Seconds,
+    // "4: not setting time"
+}
+
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut sec_now: u8 = 0;
@@ -443,8 +453,7 @@ fn main() -> ! {
     let mut vcr_mode: bool = true; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
     let mut factory_reset_disable: u8 = 0; // To make sure that we don't accidentally reset the settings...
 
-    let mut setting_time: u8 = 0; // Normally 0.
-                                  // 1: hours, 2: minutes, 3: seconds, 4: not setting time
+    let mut setting_time = SettingTime::No;
 
     let mut align_mode: u8 = 0; // Normally 0.
     let mut option_mode: u8 = 0; // NOrmally 0
@@ -556,7 +565,7 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
 
     loop {
-        let mut refresh_time = (align_mode != 0) || (setting_time != 0) || (option_mode != 0);
+        let mut refresh_time = (align_mode != 0) || (setting_time != SettingTime::No) || (option_mode != 0);
 
         let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
 
@@ -600,20 +609,20 @@ fn main() -> ! {
                     if option_mode == 5 {
                         settings.fade_mode = true;
                     }
-                } else if setting_time != 0 {
-                    if setting_time == 1 {
+                } else if setting_time != SettingTime::No {
+                    if setting_time == SettingTime::Hours {
                         hr_now += 1;
                         if hr_now > 11 {
                             hr_now = 0;
                         }
                     }
-                    if setting_time == 2 {
+                    if setting_time == SettingTime::Minutes {
                         min_now += 1;
                         if min_now > 59 {
                             min_now = 0;
                         }
                     }
-                    if setting_time == 3 {
+                    if setting_time == SettingTime::Seconds {
                         sec_now += 1;
                         if sec_now > 59 {
                             sec_now = 0;
@@ -665,22 +674,22 @@ fn main() -> ! {
                     if option_mode == 5 {
                         settings.fade_mode = false;
                     }
-                } else if setting_time != 0 {
-                    if setting_time == 1 {
+                } else if setting_time != SettingTime::No {
+                    if setting_time == SettingTime::Hours {
                         if hr_now > 0 {
                             hr_now -= 1;
                         } else {
                             hr_now = 11;
                         }
                     }
-                    if setting_time == 2 {
+                    if setting_time == SettingTime::Minutes {
                         if min_now > 0 {
                             min_now -= 1;
                         } else {
                             min_now = 59;
                         }
                     }
-                    if setting_time == 3 {
+                    if setting_time == SettingTime::Seconds {
                         if sec_now > 0 {
                             sec_now -= 1;
                         } else {
@@ -720,11 +729,13 @@ fn main() -> ! {
                     if option_mode > 5 {
                         option_mode = 1;
                     }
-                } else if setting_time != 0 {
-                    setting_time += 1;
-                    if setting_time > 3 {
-                        setting_time = 1;
-                    }
+                } else if setting_time != SettingTime::No {
+                    setting_time = match setting_time {
+                        SettingTime::No => SettingTime::No,
+                        SettingTime::Hours => SettingTime::Minutes,
+                        SettingTime::Minutes => SettingTime::Seconds,
+                        SettingTime::Seconds => SettingTime::Hours,
+                    };
                 } else {
                     sleep_mode = !sleep_mode;
                 }
@@ -806,7 +817,7 @@ fn main() -> ! {
                 momentary_override_minus = 1; // since we've detected a hold-down condition.
 
                 option_mode = 0;
-                setting_time = 0;
+                setting_time = SettingTime::No;
 
                 // Hold + and - for 3 s AT POWER ON to restore factory settings.
                 if factory_reset_disable == 0 {
@@ -835,7 +846,7 @@ fn main() -> ! {
                 momentary_override_plus = 1;
                 momentary_override_z = 1;
                 align_mode = 0;
-                setting_time = 0;
+                setting_time = SettingTime::No;
 
                 if option_mode != 0 {
                     option_mode = 0;
@@ -860,10 +871,10 @@ fn main() -> ! {
             if hold_time_set == 3 {
                 momentary_override_z = 1;
 
-                if align_mode + option_mode + setting_time != 0 {
+                if (align_mode > 0) || ( option_mode > 0) || setting_time != SettingTime::No {
                     // If we were in any of these modes, let's now return us to normalcy.
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
-                    if setting_time != 0 && ext_rtc {
+                    if setting_time != SettingTime::No && ext_rtc {
                         rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
                         leds.all_off(); // Blink LEDs off to indicate saving time
                         arduino_hal::delay_ms(100);
@@ -884,10 +895,10 @@ fn main() -> ! {
                         arduino_hal::delay_ms(100);
                     }
 
-                    setting_time = 0;
+                    setting_time = SettingTime::No;
                 } else {
                     // Go to setting mode IF and ONLY IF we were in regular-clock-display mode.
-                    setting_time = 1; // Start with HOURS in setting mode.
+                    setting_time = SettingTime::Hours; // Start with HOURS in setting mode.
                 }
 
                 align_mode = 0;
@@ -904,7 +915,7 @@ fn main() -> ! {
                 min_now += 1;
 
                 // Do not check RTC time, if we are in time-setting mode.
-                if (setting_time == 0) && ext_rtc {
+                if (setting_time == SettingTime::No) && ext_rtc {
                     // Check value at RTC ONCE PER MINUTE, if enabled.
                     if let Ok((seconds, minutes, hours)) = rtc_get_time(&mut i2c) {
                         // IF time is off by MORE than two seconds, then correct the displayed time.
@@ -1119,24 +1130,24 @@ fn main() -> ! {
             hr_1: 63,
         };
 
-        if setting_time != 0
+        if setting_time != SettingTime::No
         // i.e., if (SettingTime is nonzero)
         {
             fades.hr_1 = 5;
             fades.min_1 = 5;
             fades.sec_1 = 5;
 
-            if setting_time == 1
+            if setting_time == SettingTime::Hours
             // hours
             {
                 fades.hr_1 = TEMP_FADE;
             }
-            if setting_time == 2
+            if setting_time == SettingTime::Minutes
             // minutes
             {
                 fades.min_1 = TEMP_FADE;
             }
-            if setting_time == 3
+            if setting_time == SettingTime::Seconds
             // seconds
             {
                 fades.sec_1 = TEMP_FADE;
