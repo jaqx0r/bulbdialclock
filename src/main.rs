@@ -340,26 +340,38 @@ fn rtc_get_time(i2c: &mut arduino_hal::I2c) -> Result<(u8, u8, u8), arduino_hal:
 
 /// Increment the alignment value, wrapping past the maximum based on the alignment mode.
 #[must_use]
-fn incr_align_val(align_value: u8, align_mode: u8) -> u8 {
-    // seconds or minutes, or hours
-    if (align_mode < 5 && align_value >= 29) || (align_value >= 11) {
-        0
-    } else {
-        align_value + 1
-    }
+fn incr_align_val(align_value: u8, align_mode: &AlignMode) -> u8 {
+    let mut value = align_value + 1;
+    return match align_mode {
+        AlignMode::Seconds(_) | AlignMode::Minutes(_) => {
+            if value > 29 {
+                0
+            } else {
+                value
+            }
+        }
+
+        AlignMode::Hours(_) => {
+            if value > 11 {
+                0
+            } else {
+                value
+            }
+        }
+
+        _ => value,
+    };
 }
 
 /// Decrement the alignment value, wrapping past zero based on the alignment mode.
 #[must_use]
-fn decr_align_val(align_value: u8, align_mode: u8) -> u8 {
+fn decr_align_val(align_value: u8, align_mode: &AlignMode) -> u8 {
     if align_value > 0 {
-        align_value - 1
-    } else if align_mode < 5 {
-        // seconds or minutes
-        29
-    } else {
-        // hours
-        11
+        return align_value - 1;
+    }
+    match align_mode {
+        AlignMode::Seconds(_) | AlignMode::Minutes(_) => 29,
+        _ => 11,
     }
 }
 
@@ -433,18 +445,49 @@ enum SettingTime {
     Minutes,
     Seconds,
     // "4: not setting time"
-
 }
 
 /// OptionMode enumerates the configuration option setting modes.
 #[derive(PartialEq)]
 enum OptionMode {
     No,
-    Red,  // red (upper) colour balance
+    Red,   // red (upper) colour balance
     Green, // green (middle) colour balance
-    Blue, // blue (lower) colour balance
-    CCW, // CW vs CCW
-    Fade, // Fade Mode
+    Blue,  // blue (lower) colour balance
+    CCW,   // CW vs CCW
+    Fade,  // Fade Mode
+}
+
+/// AlignMode enumerates the LED alignment configuration states.  The boolean sets auto-advance mode in each state.
+#[derive(PartialEq)]
+enum AlignMode {
+    No,
+    Hours(bool),
+    Minutes(bool),
+    Seconds(bool),
+}
+
+impl AlignMode {
+    fn next(&self) -> Self {
+        use AlignMode::*;
+        match *self {
+            No => No,
+            Hours(true) => Hours(false),
+            Hours(false) => Minutes(true),
+            Minutes(true) => Minutes(false),
+            Minutes(false) => Seconds(true),
+            Seconds(true) => Seconds(false),
+            Seconds(false) => Hours(true),
+        }
+    }
+
+    fn is_auto_advance(&self) -> bool {
+        use AlignMode::*;
+        match *self {
+            Hours(true) | Minutes(true) | Seconds(true) => true,
+            _ => false,
+        }
+    }
 }
 
 #[arduino_hal::entry]
@@ -466,8 +509,8 @@ fn main() -> ! {
     let mut factory_reset_disable: u8 = 0; // To make sure that we don't accidentally reset the settings...
 
     let mut setting_time = SettingTime::No;
-    let mut align_mode: u8 = 0; // Normally 0.
-    let mut option_mode =  OptionMode::No;
+    let mut align_mode = AlignMode::No;
+    let mut option_mode = OptionMode::No;
     let mut align_value: u8 = 0;
     let mut align_rate: i8 = 2;
 
@@ -576,7 +619,9 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
 
     loop {
-        let mut refresh_time = (align_mode != 0) || (setting_time != SettingTime::No) || (option_mode != OptionMode::No);
+        let mut refresh_time = (align_mode != AlignMode::No)
+            || (setting_time != SettingTime::No)
+            || (option_mode != OptionMode::No);
 
         let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
 
@@ -594,15 +639,13 @@ fn main() -> ! {
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
                     sleep_mode = false;
-                } else if align_mode != 0 {
-                    if align_mode & 1 != 0 {
-                        // Odd mode:
+                } else if align_mode != AlignMode::No {
+                    if align_mode.is_auto_advance() {
                         if align_rate < 2 {
                             align_rate += 1;
                         }
                     } else {
-                        // Even mode:
-                        align_value = incr_align_val(align_value, align_mode);
+                        align_value = incr_align_val(align_value, &align_mode);
                     }
                 } else if option_mode != OptionMode::No {
                     if option_mode == OptionMode::Red && settings.hr_bright < 62 {
@@ -659,15 +702,13 @@ fn main() -> ! {
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
                     sleep_mode = false;
-                } else if align_mode != 0 {
-                    if align_mode & 1 != 0 {
-                        // Odd mode:
+                } else if align_mode != AlignMode::No {
+                    if align_mode.is_auto_advance() {
                         if align_rate > -3 {
                             align_rate -= 1;
                         }
                     } else {
-                        // Even mode:
-                        align_value = decr_align_val(align_value, align_mode);
+                        align_value = decr_align_val(align_value, &align_mode);
                     }
                 } else if option_mode != OptionMode::No {
                     if option_mode == OptionMode::Red && settings.hr_bright > 1 {
@@ -726,11 +767,8 @@ fn main() -> ! {
                 if momentary_override_z != 0 {
                     momentary_override_z = 0;
                     // Ignore this transition if it was part of a hold sequence.
-                } else if align_mode != 0 {
-                    align_mode += 1;
-                    if align_mode > 6 {
-                        align_mode = 1;
-                    }
+                } else if align_mode != AlignMode::No {
+                    align_mode.next();
                     align_value = 0;
                     align_rate = 2;
                 } else if option_mode != OptionMode::No {
@@ -847,10 +885,10 @@ fn main() -> ! {
                     );
                     leds.all_off(); // Blink LEDs off to indicate restoring data
                     arduino_hal::delay_ms(100);
-                } else if align_mode != 0 {
-                    align_mode = 0;
+                } else if align_mode != AlignMode::No {
+                    align_mode = AlignMode::No;
                 } else {
-                    align_mode = 1;
+                    align_mode = AlignMode::Hours(true);
                     align_value = 0;
                     align_rate = 2;
                 }
@@ -859,7 +897,7 @@ fn main() -> ! {
             if hold_option == 3 {
                 momentary_override_plus = 1;
                 momentary_override_z = 1;
-                align_mode = 0;
+                align_mode = AlignMode::No;
                 setting_time = SettingTime::No;
 
                 if option_mode != OptionMode::No {
@@ -885,7 +923,10 @@ fn main() -> ! {
             if hold_time_set == 3 {
                 momentary_override_z = 1;
 
-                if (align_mode > 0) || ( option_mode != OptionMode::No) || setting_time != SettingTime::No {
+                if (align_mode != AlignMode::No)
+                    || (option_mode != OptionMode::No)
+                    || setting_time != SettingTime::No
+                {
                     // If we were in any of these modes, let's now return us to normalcy.
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
                     if setting_time != SettingTime::No && ext_rtc {
@@ -915,7 +956,7 @@ fn main() -> ! {
                     setting_time = SettingTime::Hours; // Start with HOURS in setting mode.
                 }
 
-                align_mode = 0;
+                align_mode = AlignMode::No;
                 option_mode = OptionMode::No;
             }
 
@@ -987,36 +1028,41 @@ fn main() -> ! {
         if refresh_time {
             // Calculate which LEDs to light up to give the correct shadows:
 
-            if align_mode != 0 {
-                if align_mode & 1 != 0 {
-                    // ODD mode, auto-advances
+            if align_mode != AlignMode::No {
+                match align_mode {
+                    AlignMode::Hours(true)
+                    | AlignMode::Minutes(true)
+                    | AlignMode::Seconds(true) => {
+                        // ODD mode, auto-advances
 
-                    // Absolute value of AlignRate
-                    let align_rate_abs: u8 = if align_rate >= 0 {
-                        (align_rate + 1) as u8
-                    } else {
-                        (-align_rate) as u8
-                    };
-
-                    // Serial.println(AlignRateAbs,DEC);
-
-                    align_loop_count += 1;
-
-                    let scale_rate: u8 = match 2.cmp(&align_rate_abs) {
-                        Ordering::Less => 10,
-                        Ordering::Equal => 50,
-                        Ordering::Greater => 250,
-                    };
-
-                    if align_loop_count > scale_rate {
-                        align_loop_count = 0;
-
-                        if align_rate >= 0 {
-                            align_value = incr_align_val(align_value, align_mode);
+                        // Absolute value of AlignRate
+                        let align_rate_abs: u8 = if align_rate >= 0 {
+                            (align_rate + 1) as u8
                         } else {
-                            align_value = decr_align_val(align_value, align_mode);
+                            (-align_rate) as u8
+                        };
+
+                        // Serial.println(AlignRateAbs,DEC);
+
+                        align_loop_count += 1;
+
+                        let scale_rate: u8 = match 2.cmp(&align_rate_abs) {
+                            Ordering::Less => 10,
+                            Ordering::Equal => 50,
+                            Ordering::Greater => 250,
+                        };
+
+                        if align_loop_count > scale_rate {
+                            align_loop_count = 0;
+
+                            if align_rate >= 0 {
+                                align_value = incr_align_val(align_value, &align_mode);
+                            } else {
+                                align_value = decr_align_val(align_value, &align_mode);
+                            }
                         }
                     }
+                    _ => {}
                 }
 
                 sec_disp = align_value + 15; // Offset by 30 s to project *shadow* in the right place.
@@ -1166,20 +1212,25 @@ fn main() -> ! {
             {
                 fades.sec_1 = TEMP_FADE;
             }
-        } else if (align_mode > 0) || option_mode != OptionMode::No
+        } else if (align_mode != AlignMode::No) || option_mode != OptionMode::No
         // if either...
         {
             fades.hr_1 = 0;
             fades.min_1 = 0;
             fades.sec_1 = 0;
 
-            if align_mode != 0 {
-                if align_mode < 3 {
-                    fades.sec_1 = TEMP_FADE;
-                } else if align_mode > 4 {
-                    fades.hr_1 = TEMP_FADE;
-                } else {
-                    fades.min_1 = TEMP_FADE;
+            if align_mode != AlignMode::No {
+                match align_mode {
+                    AlignMode::Hours(_) => {
+                        fades.hr_1 = TEMP_FADE;
+                    }
+                    AlignMode::Minutes(_) => {
+                        fades.min_1 = TEMP_FADE;
+                    }
+                    AlignMode::Seconds(_) => {
+                        fades.sec_1 = TEMP_FADE;
+                    }
+                    _ => {}
                 }
             } else {
                 // Must be OptionMode....
