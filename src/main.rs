@@ -555,7 +555,7 @@ fn main() -> ! {
     let mut sleep_mode: bool = false;
 
     let mut vcr_mode: bool = true; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
-    let mut factory_reset_disable: u8 = 0; // To make sure that we don't accidentally reset the settings...
+    let mut factory_reset_disable: bool = false; // To make sure that we don't accidentally reset the settings...
 
     let mut setting_time = SettingTime::No;
     let mut align_mode = AlignMode::No;
@@ -844,14 +844,14 @@ fn main() -> ! {
         }
         let time_delta_ms = millis_copy - last_time;
         if time_delta_ms >= 1000 {
-            last_time += 1000;
+            last_time = last_time.wrapping_add(1000);
 
             // Check to see if any buttons are being held down:
             hold_mode = match (plus.is_high(), minus.is_high(), z.is_high()) {
                 (true, true, true) => {
                     // No buttons are pressed.
                     // Reset the variables that check to see if buttons are being held down.
-                    factory_reset_disable = 1;
+                    factory_reset_disable = true;
 
                     if time_since_button < 250 {
                         time_since_button += 1;
@@ -907,7 +907,7 @@ fn main() -> ! {
                 setting_time = SettingTime::No;
 
                 // Hold + and - for 3 s AT POWER ON to restore factory settings.
-                if factory_reset_disable == 0 {
+                if factory_reset_disable == false {
                     settings = Settings::default();
                     settings.last_saved_brightness = eeprom_save_settings(
                         &mut ep,
