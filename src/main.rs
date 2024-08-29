@@ -31,11 +31,6 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_std]
 #![no_main]
 #![feature(abi_avr_interrupt)]
-#![allow(unused_assignments)]
-#![allow(unused_variables)]
-#![allow(unused_mut)]
-#![allow(dead_code)]
-#![allow(unused_imports)]
 
 mod timer;
 use crate::timer::*;
@@ -341,7 +336,7 @@ fn rtc_get_time(i2c: &mut arduino_hal::I2c) -> Result<(u8, u8, u8), arduino_hal:
 /// Increment the alignment value, wrapping past the maximum based on the alignment mode.
 #[must_use]
 fn incr_align_val(align_value: u8, align_mode: &AlignMode) -> u8 {
-    let mut value = align_value + 1;
+    let value = align_value + 1;
     return match align_mode {
         AlignMode::Seconds(_) | AlignMode::Minutes(_) => {
             if value > 29 {
