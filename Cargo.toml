@@ -16,18 +16,24 @@ panic-serial = ["dep:panic-serial"]
 [dependencies]
 panic-halt = "0.2.0"
 panic-serial = { version = "0.1.2", features = ["full"] , optional = true}
-ufmt = "0.1.0"
-nb = "0.1.2"
-embedded-hal = "0.2.6"
+ufmt = "0.2.0"
+nb = "1.1.0"
+embedded-hal = "1.0.0"
 
 [dependencies.arduino-hal]
 git = "https://github.com/Rahix/avr-hal"
-rev = "4c9c44c314eb061ee20556ef10d45dea36e75ee4"
+rev = "65b304ec974a13f27ebc2ced21aa462c4b81ce82"
 features = ["nano168"]
 
 [dependencies.avr-device]
-version = "0.5.0"
+version = "0.5.4"
 features = ["atmega168"]
+
+# The latest releases of `proc-macro2` do not support the rust toolchain that
+# we use.  Thus, we must fix this dependency to an older version where our
+# toolchain is still supported.  See https://github.com/Rahix/avr-hal/issues/537
+[build-dependencies.proc-macro2]
+version = "=1.0.79"
 
 # Configure the build for minimal size - AVRs have very little program memory
 [profile.dev]
