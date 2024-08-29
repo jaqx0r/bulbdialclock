@@ -840,56 +840,53 @@ fn main() -> ! {
             last_time += 1000;
 
             // Check to see if any buttons are being held down:
+            match (plus.is_high(), minus.is_high(), z.is_high()) {
+                (true, true, true) => {
+                    // No buttons are pressed.
+                    // Reset the variables that check to see if buttons are being held down.
 
-            if plus.is_high() & minus.is_high() && z.is_high() {
-                // No buttons are pressed.
-                // Reset the variables that check to see if buttons are being held down.
+                    hold_time_set = 0;
+                    hold_option = 0;
+                    hold_align = 0;
+                    factory_reset_disable = 1;
 
-                hold_time_set = 0;
-                hold_option = 0;
-                hold_align = 0;
-                factory_reset_disable = 1;
-
-                if time_since_button < 250 {
-                    time_since_button += 1;
+                    if time_since_button < 250 {
+                        time_since_button += 1;
+                    }
+                    // 10 s after last button released...
+                    if time_since_button == 10
+                        && settings.last_saved_brightness != settings.main_bright
+                    {
+                        settings.last_saved_brightness = eeprom_save_settings(
+                            &mut ep,
+                            settings.main_bright,
+                            settings.hr_bright,
+                            settings.min_bright,
+                            settings.sec_bright,
+                            settings.ccw,
+                            settings.fade_mode,
+                        );
+                    }
                 }
-                // 10 s after last button released...
-                if time_since_button == 10 && settings.last_saved_brightness != settings.main_bright
-                {
-                    settings.last_saved_brightness = eeprom_save_settings(
-                        &mut ep,
-                        settings.main_bright,
-                        settings.hr_bright,
-                        settings.min_bright,
-                        settings.sec_bright,
-                        settings.ccw,
-                        settings.fade_mode,
-                    );
-                }
-            } else {
-                // Note which buttons are being held down
-
-                if plus.is_low() & minus.is_low()
-                // "+" and "-" are pressed down. "Z" is up.
-                {
+                (false, false, true) => {
+                    // "+" and "-" are pressed down. "Z" is up.
                     hold_align += 1; // We are holding for alignment mode.
                     hold_option = 0;
                     hold_time_set = 0;
                 }
-                if plus.is_low() & z.is_low()
-                // "+" and "Z" are pressed down. "-" is up.
-                {
+                (false, true, false) => {
+                    // "+" and "Z" are pressed down. "-" is up.
                     hold_option += 1; // We are holding for option setting mode.
                     hold_time_set = 0;
                     hold_align = 0;
                 }
-                if z.is_low()
-                // "Z" is pressed down. "+" and "-" are up.
-                {
+                (true,true, false) => {
+                    // "Z" is pressed down. "+" and "-" are up.
                     hold_time_set += 1; // We are holding for time setting mode.
                     hold_option = 0;
                     hold_align = 0;
                 }
+                _ => {}
             }
 
             if hold_align == 3 {
