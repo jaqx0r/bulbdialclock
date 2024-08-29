@@ -530,6 +530,15 @@ impl AlignValue {
     }
 }
 
+/// HoldMode enumerates the button hold state.  The u8 records the time the button is held.
+#[derive(PartialEq)]
+enum HoldMode {
+    None,
+    TimeSet(u8),
+    Option(u8),
+    Align(u8),
+}
+
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut sec_now: u8 = 0;
@@ -557,9 +566,7 @@ fn main() -> ! {
     let mut align_loop_count: u8 = 0;
     let mut starting_option: u8 = 0;
 
-    let mut hold_time_set: u8 = 0;
-    let mut hold_option: u8 = 0;
-    let mut hold_align: u8 = 0;
+    let mut hold_mode = HoldMode::None;
 
     let mut momentary_override_plus: u8 = 0;
     let mut momentary_override_minus: u8 = 0;
@@ -840,14 +847,10 @@ fn main() -> ! {
             last_time += 1000;
 
             // Check to see if any buttons are being held down:
-            match (plus.is_high(), minus.is_high(), z.is_high()) {
+            hold_mode = match (plus.is_high(), minus.is_high(), z.is_high()) {
                 (true, true, true) => {
                     // No buttons are pressed.
                     // Reset the variables that check to see if buttons are being held down.
-
-                    hold_time_set = 0;
-                    hold_option = 0;
-                    hold_align = 0;
                     factory_reset_disable = 1;
 
                     if time_since_button < 250 {
@@ -867,29 +870,36 @@ fn main() -> ! {
                             settings.fade_mode,
                         );
                     }
+                    HoldMode::None
                 }
                 (false, false, true) => {
                     // "+" and "-" are pressed down. "Z" is up.
-                    hold_align += 1; // We are holding for alignment mode.
-                    hold_option = 0;
-                    hold_time_set = 0;
+                    // We are holding for alignment mode.
+                    match hold_mode {
+                        HoldMode::Align(x) => HoldMode::Align(x + 1),
+                        _ => HoldMode::Align(1),
+                    }
                 }
                 (false, true, false) => {
                     // "+" and "Z" are pressed down. "-" is up.
-                    hold_option += 1; // We are holding for option setting mode.
-                    hold_time_set = 0;
-                    hold_align = 0;
+                    // We are holding for option setting mode.
+                    match hold_mode {
+                        HoldMode::Option(x) => HoldMode::Option(x + 1),
+                        _ => HoldMode::Option(1),
+                    }
                 }
-                (true,true, false) => {
+                (true, true, false) => {
                     // "Z" is pressed down. "+" and "-" are up.
-                    hold_time_set += 1; // We are holding for time setting mode.
-                    hold_option = 0;
-                    hold_align = 0;
+                    // We are holding for time setting mode.
+                    match hold_mode {
+                        HoldMode::TimeSet(x) => HoldMode::TimeSet(x + 1),
+                        _ => HoldMode::TimeSet(1),
+                    }
                 }
-                _ => {}
-            }
+                _ => hold_mode
+            };
 
-            if hold_align == 3 {
+            if hold_mode == HoldMode::Align(3) {
                 momentary_override_plus = 1; // Override momentary-action of switches
                 momentary_override_minus = 1; // since we've detected a hold-down condition.
 
@@ -919,7 +929,7 @@ fn main() -> ! {
                 }
             }
 
-            if hold_option == 3 {
+            if hold_mode == HoldMode::Option(3) {
                 momentary_override_plus = 1;
                 momentary_override_z = 1;
                 align_mode = AlignMode::No;
@@ -945,7 +955,7 @@ fn main() -> ! {
                 }
             }
 
-            if hold_time_set == 3 {
+            if hold_mode == HoldMode::TimeSet(3) {
                 momentary_override_z = 1;
 
                 if (align_mode != AlignMode::No)
