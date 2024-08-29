@@ -433,6 +433,18 @@ enum SettingTime {
     Minutes,
     Seconds,
     // "4: not setting time"
+
+}
+
+/// OptionMode enumerates the configuration option setting modes.
+#[derive(PartialEq)]
+enum OptionMode {
+    No,
+    Red,  // red (upper) colour balance
+    Green, // green (middle) colour balance
+    Blue, // blue (lower) colour balance
+    CCW, // CW vs CCW
+    Fade, // Fade Mode
 }
 
 #[arduino_hal::entry]
@@ -454,9 +466,8 @@ fn main() -> ! {
     let mut factory_reset_disable: u8 = 0; // To make sure that we don't accidentally reset the settings...
 
     let mut setting_time = SettingTime::No;
-
     let mut align_mode: u8 = 0; // Normally 0.
-    let mut option_mode: u8 = 0; // NOrmally 0
+    let mut option_mode =  OptionMode::No;
     let mut align_value: u8 = 0;
     let mut align_rate: i8 = 2;
 
@@ -565,7 +576,7 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
 
     loop {
-        let mut refresh_time = (align_mode != 0) || (setting_time != SettingTime::No) || (option_mode != 0);
+        let mut refresh_time = (align_mode != 0) || (setting_time != SettingTime::No) || (option_mode != OptionMode::No);
 
         let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
 
@@ -593,20 +604,20 @@ fn main() -> ! {
                         // Even mode:
                         align_value = incr_align_val(align_value, align_mode);
                     }
-                } else if option_mode != 0 {
-                    if option_mode == 1 && settings.hr_bright < 62 {
+                } else if option_mode != OptionMode::No {
+                    if option_mode == OptionMode::Red && settings.hr_bright < 62 {
                         settings.hr_bright += 2;
                     }
-                    if option_mode == 2 && settings.min_bright < 62 {
+                    if option_mode == OptionMode::Green && settings.min_bright < 62 {
                         settings.min_bright += 2;
                     }
-                    if option_mode == 3 && settings.sec_bright < 62 {
+                    if option_mode == OptionMode::Blue && settings.sec_bright < 62 {
                         settings.sec_bright += 2;
                     }
-                    if option_mode == 4 {
+                    if option_mode == OptionMode::CCW {
                         settings.ccw = false;
                     }
-                    if option_mode == 5 {
+                    if option_mode == OptionMode::Fade {
                         settings.fade_mode = true;
                     }
                 } else if setting_time != SettingTime::No {
@@ -658,20 +669,20 @@ fn main() -> ! {
                         // Even mode:
                         align_value = decr_align_val(align_value, align_mode);
                     }
-                } else if option_mode != 0 {
-                    if option_mode == 1 && settings.hr_bright > 1 {
+                } else if option_mode != OptionMode::No {
+                    if option_mode == OptionMode::Red && settings.hr_bright > 1 {
                         settings.hr_bright -= 2;
                     }
-                    if option_mode == 2 && settings.min_bright > 1 {
+                    if option_mode == OptionMode::Green && settings.min_bright > 1 {
                         settings.min_bright -= 2;
                     }
-                    if option_mode == 3 && settings.sec_bright > 1 {
+                    if option_mode == OptionMode::Blue && settings.sec_bright > 1 {
                         settings.sec_bright -= 2;
                     }
-                    if option_mode == 4 {
+                    if option_mode == OptionMode::CCW {
                         settings.ccw = true;
                     }
-                    if option_mode == 5 {
+                    if option_mode == OptionMode::Fade {
                         settings.fade_mode = false;
                     }
                 } else if setting_time != SettingTime::No {
@@ -722,13 +733,16 @@ fn main() -> ! {
                     }
                     align_value = 0;
                     align_rate = 2;
-                } else if option_mode != 0 {
-                    option_mode += 1;
+                } else if option_mode != OptionMode::No {
+                    option_mode = match option_mode {
+                        OptionMode::No => OptionMode::No,
+                        OptionMode::Red => OptionMode::Green,
+                        OptionMode::Green => OptionMode::Blue,
+                        OptionMode::Blue => OptionMode::CCW,
+                        OptionMode::CCW => OptionMode::Fade,
+                        OptionMode::Fade => OptionMode::Red,
+                    };
                     starting_option = 0;
-
-                    if option_mode > 5 {
-                        option_mode = 1;
-                    }
                 } else if setting_time != SettingTime::No {
                     setting_time = match setting_time {
                         SettingTime::No => SettingTime::No,
@@ -816,7 +830,7 @@ fn main() -> ! {
                 momentary_override_plus = 1; // Override momentary-action of switches
                 momentary_override_minus = 1; // since we've detected a hold-down condition.
 
-                option_mode = 0;
+                option_mode = OptionMode::No;
                 setting_time = SettingTime::No;
 
                 // Hold + and - for 3 s AT POWER ON to restore factory settings.
@@ -848,8 +862,8 @@ fn main() -> ! {
                 align_mode = 0;
                 setting_time = SettingTime::No;
 
-                if option_mode != 0 {
-                    option_mode = 0;
+                if option_mode != OptionMode::No {
+                    option_mode = OptionMode::No;
                     // Save options if exiting option mode!
                     settings.last_saved_brightness = eeprom_save_settings(
                         &mut ep,
@@ -863,7 +877,7 @@ fn main() -> ! {
                     leds.all_off(); // Blink LEDs off to indicate saving data
                     arduino_hal::delay_ms(100);
                 } else {
-                    option_mode = 1;
+                    option_mode = OptionMode::Red;
                     starting_option = 0;
                 }
             }
@@ -871,7 +885,7 @@ fn main() -> ! {
             if hold_time_set == 3 {
                 momentary_override_z = 1;
 
-                if (align_mode > 0) || ( option_mode > 0) || setting_time != SettingTime::No {
+                if (align_mode > 0) || ( option_mode != OptionMode::No) || setting_time != SettingTime::No {
                     // If we were in any of these modes, let's now return us to normalcy.
                     // IF we are exiting time-setting mode, save the time to the RTC, if present:
                     if setting_time != SettingTime::No && ext_rtc {
@@ -880,7 +894,7 @@ fn main() -> ! {
                         arduino_hal::delay_ms(100);
                     }
 
-                    if option_mode != 0 {
+                    if option_mode != OptionMode::No {
                         // Save options if exiting option mode!
                         settings.last_saved_brightness = eeprom_save_settings(
                             &mut ep,
@@ -902,7 +916,7 @@ fn main() -> ! {
                 }
 
                 align_mode = 0;
-                option_mode = 0;
+                option_mode = OptionMode::No;
             }
 
             // Note: this section could act funny if you hold the buttons for 256 or more seconds.
@@ -1015,7 +1029,7 @@ fn main() -> ! {
                 if hr_disp > 11 {
                     hr_disp -= 12;
                 }
-            } else if option_mode != 0 {
+            } else if option_mode != OptionMode::No {
                 // Option setting mode
 
                 if starting_option < START_OPT_TIME_LIMIT {
@@ -1025,7 +1039,7 @@ fn main() -> ! {
                         align_loop_count = 0;
                         starting_option += 1;
 
-                        if option_mode == 1
+                        if option_mode == OptionMode::Red
                         // Red (upper) ring color balance
                         {
                             hr_disp += 1;
@@ -1033,7 +1047,7 @@ fn main() -> ! {
                                 hr_disp = 0;
                             }
                         }
-                        if option_mode == 2
+                        if option_mode == OptionMode::Green
                         // Green (middle) ring color balance
                         {
                             min_disp += 1;
@@ -1041,7 +1055,7 @@ fn main() -> ! {
                                 min_disp = 0;
                             }
                         }
-                        if option_mode == 3
+                        if option_mode == OptionMode::Blue
                         // Blue (lower) ring color balance
                         {
                             sec_disp += 1;
@@ -1049,7 +1063,7 @@ fn main() -> ! {
                                 sec_disp = 0;
                             }
                         }
-                        if option_mode >= 4
+                        if option_mode == OptionMode::CCW || option_mode == OptionMode::Fade
                         // CW vs CCW OR fade mode
                         {
                             starting_option = START_OPT_TIME_LIMIT; // Exit this loop
@@ -1058,7 +1072,7 @@ fn main() -> ! {
                 } // end "if (StartingOption < StartOptTimeLimit){}"
 
                 if starting_option >= START_OPT_TIME_LIMIT {
-                    if option_mode == 4 {
+                    if option_mode == OptionMode::CCW {
                         min_disp += 1;
                         if min_disp > 29 {
                             min_disp = 0;
@@ -1152,7 +1166,7 @@ fn main() -> ! {
             {
                 fades.sec_1 = TEMP_FADE;
             }
-        } else if align_mode + option_mode != 0
+        } else if (align_mode > 0) || option_mode != OptionMode::No
         // if either...
         {
             fades.hr_1 = 0;
@@ -1170,16 +1184,16 @@ fn main() -> ! {
             } else {
                 // Must be OptionMode....
                 if starting_option < START_OPT_TIME_LIMIT {
-                    if option_mode == 1 {
+                    if option_mode == OptionMode::Red {
                         fades.hr_1 = TEMP_FADE;
                     }
-                    if option_mode == 2 {
+                    if option_mode == OptionMode::Green {
                         fades.min_1 = TEMP_FADE;
                     }
-                    if option_mode == 3 {
+                    if option_mode == OptionMode::Blue {
                         fades.sec_1 = TEMP_FADE;
                     }
-                    if option_mode == 4
+                    if option_mode == OptionMode::CCW
                     // CW vs CCW
                     {
                         fades.sec_1 = TEMP_FADE;
@@ -1192,7 +1206,7 @@ fn main() -> ! {
                     fades.min_1 = TEMP_FADE;
                     fades.sec_1 = TEMP_FADE;
 
-                    if option_mode == 4
+                    if option_mode == OptionMode::CCW
                     // CW vs CCW
                     {
                         fades.hr_1 = 0;
