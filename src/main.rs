@@ -422,11 +422,11 @@ impl SettingTime {
 #[derive(PartialEq)]
 enum OptionMode {
     No,
-    Red,   // red (upper) colour balance
-    Green, // green (middle) colour balance
-    Blue,  // blue (lower) colour balance
-    CCW,   // CW vs CCW
-    Fade,  // Fade Mode
+    Red,              // red (upper) colour balance
+    Green,            // green (middle) colour balance
+    Blue,             // blue (lower) colour balance
+    CounterClockwise, // CW vs CCW
+    Fade,             // Fade Mode
 }
 
 impl OptionMode {
@@ -437,8 +437,8 @@ impl OptionMode {
             No => No,
             Red => Green,
             Green => Blue,
-            Blue => CCW,
-            CCW => Fade,
+            Blue => CounterClockwise,
+            CounterClockwise => Fade,
             Fade => Red,
         }
     }
@@ -471,10 +471,7 @@ impl AlignMode {
     /// is_auto_advance is true if this is an auto-advancing LED alignment configuration state
     fn is_auto_advance(&self) -> bool {
         use AlignMode::*;
-        match *self {
-            Hours(true) | Minutes(true) | Seconds(true) => true,
-            _ => false,
-        }
+        matches!(*self, Hours(true) | Minutes(true) | Seconds(true))
     }
 }
 
@@ -704,7 +701,7 @@ fn main() -> ! {
                     if option_mode == OptionMode::Blue && settings.sec_bright < 62 {
                         settings.sec_bright += 2;
                     }
-                    if option_mode == OptionMode::CCW {
+                    if option_mode == OptionMode::CounterClockwise {
                         settings.ccw = false;
                     }
                     if option_mode == OptionMode::Fade {
@@ -767,7 +764,7 @@ fn main() -> ! {
                     if option_mode == OptionMode::Blue && settings.sec_bright > 1 {
                         settings.sec_bright -= 2;
                     }
-                    if option_mode == OptionMode::CCW {
+                    if option_mode == OptionMode::CounterClockwise {
                         settings.ccw = true;
                     }
                     if option_mode == OptionMode::Fade {
@@ -896,7 +893,7 @@ fn main() -> ! {
                         _ => HoldMode::TimeSet(1),
                     }
                 }
-                _ => hold_mode
+                _ => hold_mode,
             };
 
             if hold_mode == HoldMode::Align(3) {
@@ -907,7 +904,7 @@ fn main() -> ! {
                 setting_time = SettingTime::No;
 
                 // Hold + and - for 3 s AT POWER ON to restore factory settings.
-                if factory_reset_disable == false {
+                if !factory_reset_disable {
                     settings = Settings::default();
                     settings.last_saved_brightness = eeprom_save_settings(
                         &mut ep,
@@ -1144,7 +1141,8 @@ fn main() -> ! {
                                 sec_disp = 0;
                             }
                         }
-                        if option_mode == OptionMode::CCW || option_mode == OptionMode::Fade
+                        if option_mode == OptionMode::CounterClockwise
+                            || option_mode == OptionMode::Fade
                         // CW vs CCW OR fade mode
                         {
                             starting_option = START_OPT_TIME_LIMIT; // Exit this loop
@@ -1153,7 +1151,7 @@ fn main() -> ! {
                 } // end "if (StartingOption < StartOptTimeLimit){}"
 
                 if starting_option >= START_OPT_TIME_LIMIT {
-                    if option_mode == OptionMode::CCW {
+                    if option_mode == OptionMode::CounterClockwise {
                         min_disp += 1;
                         if min_disp > 29 {
                             min_disp = 0;
@@ -1279,7 +1277,7 @@ fn main() -> ! {
                     if option_mode == OptionMode::Blue {
                         fades.sec_1 = TEMP_FADE;
                     }
-                    if option_mode == OptionMode::CCW
+                    if option_mode == OptionMode::CounterClockwise
                     // CW vs CCW
                     {
                         fades.sec_1 = TEMP_FADE;
@@ -1292,7 +1290,7 @@ fn main() -> ! {
                     fades.min_1 = TEMP_FADE;
                     fades.sec_1 = TEMP_FADE;
 
-                    if option_mode == OptionMode::CCW
+                    if option_mode == OptionMode::CounterClockwise
                     // CW vs CCW
                     {
                         fades.hr_1 = 0;
