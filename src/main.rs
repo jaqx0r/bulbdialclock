@@ -515,6 +515,28 @@ impl AlignMode {
     }
 }
 
+struct AlignValue {
+    value: u8,
+}
+
+impl AlignValue {
+    fn incr(&mut self, align_mode: &AlignMode) {
+        self.value = incr_align_val(self.value, align_mode);
+    }
+
+    fn decr(&mut self, align_mode: &AlignMode) {
+        self.value = decr_align_val(self.value, align_mode);
+    }
+
+    fn value(&self) -> u8 {
+        self.value
+    }
+
+    fn reset(&mut self) {
+        self.value = 0;
+    }
+}
+
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut sec_now: u8 = 0;
@@ -536,7 +558,7 @@ fn main() -> ! {
     let mut setting_time = SettingTime::No;
     let mut align_mode = AlignMode::No;
     let mut option_mode = OptionMode::No;
-    let mut align_value: u8 = 0;
+    let mut align_value = AlignValue { value: 0 };
     let mut align_rate: i8 = 2;
 
     let mut align_loop_count: u8 = 0;
@@ -670,7 +692,7 @@ fn main() -> ! {
                             align_rate += 1;
                         }
                     } else {
-                        align_value = incr_align_val(align_value, &align_mode);
+                        align_value.incr(&align_mode);
                     }
                 } else if option_mode != OptionMode::No {
                     if option_mode == OptionMode::Red && settings.hr_bright < 62 {
@@ -733,7 +755,7 @@ fn main() -> ! {
                             align_rate -= 1;
                         }
                     } else {
-                        align_value = decr_align_val(align_value, &align_mode);
+                        align_value.decr(&align_mode);
                     }
                 } else if option_mode != OptionMode::No {
                     if option_mode == OptionMode::Red && settings.hr_bright > 1 {
@@ -794,7 +816,7 @@ fn main() -> ! {
                     // Ignore this transition if it was part of a hold sequence.
                 } else if align_mode != AlignMode::No {
                     align_mode.next();
-                    align_value = 0;
+                    align_value.reset();
                     align_rate = 2;
                 } else if option_mode != OptionMode::No {
                     option_mode.next();
@@ -902,7 +924,7 @@ fn main() -> ! {
                     align_mode = AlignMode::No;
                 } else {
                     align_mode = AlignMode::Hours(true);
-                    align_value = 0;
+                    align_value.reset();
                     align_rate = 2;
                 }
             }
@@ -1069,21 +1091,21 @@ fn main() -> ! {
                             align_loop_count = 0;
 
                             if align_rate >= 0 {
-                                align_value = incr_align_val(align_value, &align_mode);
+                                align_value.incr(&align_mode);
                             } else {
-                                align_value = decr_align_val(align_value, &align_mode);
+                                align_value.decr(&align_mode);
                             }
                         }
                     }
                     _ => {}
                 }
 
-                sec_disp = align_value + 15; // Offset by 30 s to project *shadow* in the right place.
+                sec_disp = align_value.value() + 15; // Offset by 30 s to project *shadow* in the right place.
                 if sec_disp > 29 {
                     sec_disp -= 30;
                 }
                 min_disp = sec_disp;
-                hr_disp = align_value + 6; // Offset by 6 h to project *shadow* in the right place.
+                hr_disp = align_value.value() + 6; // Offset by 6 h to project *shadow* in the right place.
 
                 if hr_disp > 11 {
                     hr_disp -= 12;
