@@ -447,6 +447,19 @@ enum SettingTime {
     // "4: not setting time"
 }
 
+impl SettingTime {
+    /// next moves to the next time setting state
+    fn next(&self) -> Self {
+        use SettingTime::*;
+        match &self {
+            No => No,
+            Hours => Minutes,
+            Minutes => Seconds,
+            Seconds => Hours,
+        }
+    }
+}
+
 /// OptionMode enumerates the configuration option setting modes.
 #[derive(PartialEq)]
 enum OptionMode {
@@ -456,6 +469,21 @@ enum OptionMode {
     Blue,  // blue (lower) colour balance
     CCW,   // CW vs CCW
     Fade,  // Fade Mode
+}
+
+impl OptionMode {
+    /// next moves to the next configuration option setting mode
+    fn next(&self) -> Self {
+        use OptionMode::*;
+        match &self {
+            No => No,
+            Red => Green,
+            Green => Blue,
+            Blue => CCW,
+            CCW => Fade,
+            Fade => Red,
+        }
+    }
 }
 
 /// AlignMode enumerates the LED alignment configuration states.  The boolean sets auto-advance mode in each state.
@@ -468,6 +496,7 @@ enum AlignMode {
 }
 
 impl AlignMode {
+    /// next moves to the next LED alignment configuration state
     fn next(&self) -> Self {
         use AlignMode::*;
         match *self {
@@ -481,6 +510,7 @@ impl AlignMode {
         }
     }
 
+    /// is_auto_advance is true if this is an auto-advancing LED alignment configuration state
     fn is_auto_advance(&self) -> bool {
         use AlignMode::*;
         match *self {
@@ -772,22 +802,10 @@ fn main() -> ! {
                     align_value = 0;
                     align_rate = 2;
                 } else if option_mode != OptionMode::No {
-                    option_mode = match option_mode {
-                        OptionMode::No => OptionMode::No,
-                        OptionMode::Red => OptionMode::Green,
-                        OptionMode::Green => OptionMode::Blue,
-                        OptionMode::Blue => OptionMode::CCW,
-                        OptionMode::CCW => OptionMode::Fade,
-                        OptionMode::Fade => OptionMode::Red,
-                    };
+                    option_mode.next();
                     starting_option = 0;
                 } else if setting_time != SettingTime::No {
-                    setting_time = match setting_time {
-                        SettingTime::No => SettingTime::No,
-                        SettingTime::Hours => SettingTime::Minutes,
-                        SettingTime::Minutes => SettingTime::Seconds,
-                        SettingTime::Seconds => SettingTime::Hours,
-                    };
+                    setting_time.next();
                 } else {
                     sleep_mode = !sleep_mode;
                 }
