@@ -333,43 +333,6 @@ fn rtc_get_time(i2c: &mut arduino_hal::I2c) -> Result<(u8, u8, u8), arduino_hal:
     Ok((seconds, minutes, hours))
 }
 
-/// Increment the alignment value, wrapping past the maximum based on the alignment mode.
-#[must_use]
-fn incr_align_val(align_value: u8, align_mode: &AlignMode) -> u8 {
-    let value = align_value + 1;
-    return match align_mode {
-        AlignMode::Seconds(_) | AlignMode::Minutes(_) => {
-            if value > 29 {
-                0
-            } else {
-                value
-            }
-        }
-
-        AlignMode::Hours(_) => {
-            if value > 11 {
-                0
-            } else {
-                value
-            }
-        }
-
-        _ => value,
-    };
-}
-
-/// Decrement the alignment value, wrapping past zero based on the alignment mode.
-#[must_use]
-fn decr_align_val(align_value: u8, align_mode: &AlignMode) -> u8 {
-    if align_value > 0 {
-        return align_value - 1;
-    }
-    match align_mode {
-        AlignMode::Seconds(_) | AlignMode::Minutes(_) => 29,
-        _ => 11,
-    }
-}
-
 struct Leds {
     d10: port::Pin<port::mode::Output, port::PB2>,
     a0: port::Pin<port::mode::Output, port::PC0>,
@@ -520,12 +483,42 @@ struct AlignValue {
 }
 
 impl AlignValue {
+    /// Increment the alignment value, wrapping past the maximum based on the alignment mode.
     fn incr(&mut self, align_mode: &AlignMode) {
-        self.value = incr_align_val(self.value, align_mode);
+        match align_mode {
+            AlignMode::Seconds(_) | AlignMode::Minutes(_) => {
+                if self.value > 28 {
+                    self.value = 0;
+                } else {
+                    self.value += 1;
+                }
+            }
+            AlignMode::Hours(_) => {
+                if self.value > 10 {
+                    self.value = 0;
+                } else {
+                    self.value += 1;
+                }
+            }
+            _ => {}
+        };
     }
 
+    /// Decrement the alignment value, wrapping past zero based on the alignment mode.
     fn decr(&mut self, align_mode: &AlignMode) {
-        self.value = decr_align_val(self.value, align_mode);
+        if self.value > 0 {
+            self.value -= 1;
+        } else {
+            match align_mode {
+                AlignMode::Seconds(_) | AlignMode::Minutes(_) => {
+                    self.value = 29;
+                }
+                AlignMode::Hours(_) => {
+                    self.value = 11;
+                }
+                _ => {}
+            };
+        }
     }
 
     fn value(&self) -> u8 {
