@@ -487,14 +487,14 @@ impl AlignValue {
                 if self.value > 28 {
                     self.value = 0;
                 } else {
-                    self.value += 1;
+                    self.value = self.value.wrapping_add(1);
                 }
             }
             AlignMode::Hours(_) => {
                 if self.value > 10 {
                     self.value = 0;
                 } else {
-                    self.value += 1;
+                    self.value = self.value.wrapping_add(1);
                 }
             }
             _ => {}
@@ -686,7 +686,7 @@ fn main() -> ! {
                 } else if align_mode != AlignMode::No {
                     if align_mode.is_auto_advance() {
                         if align_rate < 2 {
-                            align_rate += 1;
+                            align_rate = align_rate.wrapping_add(1);
                         }
                     } else {
                         align_value.incr(&align_mode);
@@ -709,26 +709,26 @@ fn main() -> ! {
                     }
                 } else if setting_time != SettingTime::No {
                     if setting_time == SettingTime::Hours {
-                        hr_now += 1;
+                        hr_now = hr_now.wrapping_add(1);
                         if hr_now > 11 {
                             hr_now = 0;
                         }
                     }
                     if setting_time == SettingTime::Minutes {
-                        min_now += 1;
+                        min_now = min_now.wrapping_add(1);
                         if min_now > 59 {
                             min_now = 0;
                         }
                     }
                     if setting_time == SettingTime::Seconds {
-                        sec_now += 1;
+                        sec_now = sec_now.wrapping_add(1);
                         if sec_now > 59 {
                             sec_now = 0;
                         }
                     }
                 } else {
                     // Brightness control mode
-                    settings.main_bright += 1;
+                    settings.main_bright = settings.main_bright.wrapping_add(1);
                     if settings.main_bright > 8 {
                         settings.main_bright = 1;
                     }
@@ -850,7 +850,7 @@ fn main() -> ! {
                     factory_reset_disable = true;
 
                     if time_since_button < 250 {
-                        time_since_button += 1;
+                        time_since_button = time_since_button.wrapping_add(1);
                     }
                     // 10 s after last button released...
                     if time_since_button == 10
@@ -998,11 +998,11 @@ fn main() -> ! {
             // Note: this section could act funny if you hold the buttons for 256 or more seconds.
             // So... um... don't do that.  :P
 
-            sec_now += 1;
+            sec_now = sec_now.wrapping_add(1);
 
             if sec_now > 59 {
                 sec_now = 0;
-                min_now += 1;
+                min_now = min_now.wrapping_add(1);
 
                 // Do not check RTC time, if we are in time-setting mode.
                 if (setting_time == SettingTime::No) && ext_rtc {
@@ -1050,7 +1050,7 @@ fn main() -> ! {
 
             if min_now > 59 {
                 min_now = 0;
-                hr_now += 1;
+                hr_now = hr_now.wrapping_add(1);
 
                 if hr_now > 11 {
                     hr_now = 0;
@@ -1072,14 +1072,14 @@ fn main() -> ! {
 
                         // Absolute value of AlignRate
                         let align_rate_abs: u8 = if align_rate >= 0 {
-                            (align_rate + 1) as u8
+                            (align_rate.wrapping_add(1)) as u8
                         } else {
                             (-align_rate) as u8
                         };
 
                         // Serial.println(AlignRateAbs,DEC);
 
-                        align_loop_count += 1;
+                        align_loop_count = align_loop_count.wrapping_add(1);
 
                         let scale_rate: u8 = match 2.cmp(&align_rate_abs) {
                             Ordering::Less => 10,
@@ -1114,16 +1114,16 @@ fn main() -> ! {
                 // Option setting mode
 
                 if starting_option < START_OPT_TIME_LIMIT {
-                    align_loop_count += 1; // Borrowing a counter variable...
+                    align_loop_count = align_loop_count.wrapping_add(1); // Borrowing a counter variable...
 
                     if align_loop_count > 3 {
                         align_loop_count = 0;
-                        starting_option += 1;
+                        starting_option = starting_option.wrapping_add(1);
 
                         if option_mode == OptionMode::Red
                         // Red (upper) ring color balance
                         {
-                            hr_disp += 1;
+                            hr_disp = hr_disp.wrapping_add(1);
                             if hr_disp > 11 {
                                 hr_disp = 0;
                             }
@@ -1131,7 +1131,7 @@ fn main() -> ! {
                         if option_mode == OptionMode::Green
                         // Green (middle) ring color balance
                         {
-                            min_disp += 1;
+                            min_disp = min_disp.wrapping_add(1);
                             if min_disp > 29 {
                                 min_disp = 0;
                             }
@@ -1139,7 +1139,7 @@ fn main() -> ! {
                         if option_mode == OptionMode::Blue
                         // Blue (lower) ring color balance
                         {
-                            sec_disp += 1;
+                            sec_disp = sec_disp.wrapping_add(1);
                             if sec_disp > 29 {
                                 sec_disp = 0;
                             }
@@ -1155,7 +1155,7 @@ fn main() -> ! {
 
                 if starting_option >= START_OPT_TIME_LIMIT {
                     if option_mode == OptionMode::CounterClockwise {
-                        min_disp += 1;
+                        min_disp = min_disp.wrapping_add(1);
                         if min_disp > 29 {
                             min_disp = 0;
                         }
