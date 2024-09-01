@@ -565,9 +565,9 @@ fn main() -> ! {
 
     let mut hold_mode = HoldMode::None;
 
-    let mut momentary_override_plus: u8 = 0;
-    let mut momentary_override_minus: u8 = 0;
-    let mut momentary_override_z: u8 = 0;
+    let mut momentary_override_plus: bool = false;
+    let mut momentary_override_minus: bool = false;
+    let mut momentary_override_z: bool = false;
 
     // Initialised in normalTimeDisplay
     let mut sec_next: u8 = 0;
@@ -678,8 +678,8 @@ fn main() -> ! {
             if !plus_copy && plus_last {
                 // "+" Button was pressed previously, and was just released!
 
-                if momentary_override_plus != 0 {
-                    momentary_override_plus = 0;
+                if momentary_override_plus  {
+                    momentary_override_plus = false;
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
                     sleep_mode = false;
@@ -741,8 +741,8 @@ fn main() -> ! {
                 vcr_mode = false; // End once any buttons have been pressed...
                 time_since_button = 0;
 
-                if momentary_override_minus != 0 {
-                    momentary_override_minus = 0;
+                if momentary_override_minus  {
+                    momentary_override_minus = false;
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
                     sleep_mode = false;
@@ -808,8 +808,8 @@ fn main() -> ! {
                 vcr_mode = false; // End once any buttons have been pressed...
                 time_since_button = 0;
 
-                if momentary_override_z != 0 {
-                    momentary_override_z = 0;
+                if momentary_override_z {
+                    momentary_override_z = false;
                     // Ignore this transition if it was part of a hold sequence.
                 } else if align_mode != AlignMode::No {
                     align_mode.next();
@@ -847,7 +847,6 @@ fn main() -> ! {
             hold_mode = match (plus.is_high(), minus.is_high(), z.is_high()) {
                 (true, true, true) => {
                     // No buttons are pressed.
-                    // Reset the variables that check to see if buttons are being held down.
                     factory_reset_disable = true;
 
                     if time_since_button < 250 {
@@ -896,78 +895,45 @@ fn main() -> ! {
                 _ => hold_mode,
             };
 
-            if hold_mode == HoldMode::Align(3) {
-                momentary_override_plus = 1; // Override momentary-action of switches
-                momentary_override_minus = 1; // since we've detected a hold-down condition.
+            match hold_mode {
+                HoldMode::Align(3) => {
+                    momentary_override_plus = true; // Override momentary-action of switches
+                    momentary_override_minus = true; // since we've detected a hold-down condition.
 
-                option_mode = OptionMode::No;
-                setting_time = SettingTime::No;
-
-                // Hold + and - for 3 s AT POWER ON to restore factory settings.
-                if !factory_reset_disable {
-                    settings = Settings::default();
-                    settings.last_saved_brightness = eeprom_save_settings(
-                        &mut ep,
-                        settings.main_bright,
-                        settings.hr_bright,
-                        settings.min_bright,
-                        settings.sec_bright,
-                        settings.ccw,
-                        settings.fade_mode,
-                    );
-                    leds.all_off(); // Blink LEDs off to indicate restoring data
-                    arduino_hal::delay_ms(100);
-                } else if align_mode != AlignMode::No {
-                    align_mode = AlignMode::No;
-                } else {
-                    align_mode = AlignMode::Hours(true);
-                    align_value.reset();
-                    align_rate = 2;
-                }
-            }
-
-            if hold_mode == HoldMode::Option(3) {
-                momentary_override_plus = 1;
-                momentary_override_z = 1;
-                align_mode = AlignMode::No;
-                setting_time = SettingTime::No;
-
-                if option_mode != OptionMode::No {
                     option_mode = OptionMode::No;
-                    // Save options if exiting option mode!
-                    settings.last_saved_brightness = eeprom_save_settings(
-                        &mut ep,
-                        settings.main_bright,
-                        settings.hr_bright,
-                        settings.min_bright,
-                        settings.sec_bright,
-                        settings.ccw,
-                        settings.fade_mode,
-                    );
-                    leds.all_off(); // Blink LEDs off to indicate saving data
-                    arduino_hal::delay_ms(100);
-                } else {
-                    option_mode = OptionMode::Red;
-                    starting_option = 0;
-                }
-            }
+                    setting_time = SettingTime::No;
 
-            if hold_mode == HoldMode::TimeSet(3) {
-                momentary_override_z = 1;
-
-                if (align_mode != AlignMode::No)
-                    || (option_mode != OptionMode::No)
-                    || setting_time != SettingTime::No
-                {
-                    // If we were in any of these modes, let's now return us to normalcy.
-                    // IF we are exiting time-setting mode, save the time to the RTC, if present:
-                    if setting_time != SettingTime::No && ext_rtc {
-                        rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
-                        leds.all_off(); // Blink LEDs off to indicate saving time
+                    // Hold + and - for 3 s AT POWER ON to restore factory settings.
+                    if !factory_reset_disable {
+                        settings = Settings::default();
+                        settings.last_saved_brightness = eeprom_save_settings(
+                            &mut ep,
+                            settings.main_bright,
+                            settings.hr_bright,
+                            settings.min_bright,
+                            settings.sec_bright,
+                            settings.ccw,
+                            settings.fade_mode,
+                        );
+                        leds.all_off(); // Blink LEDs off to indicate restoring data
                         arduino_hal::delay_ms(100);
+                    } else if align_mode != AlignMode::No {
+                        align_mode = AlignMode::No;
+                    } else {
+                        align_mode = AlignMode::Hours(true);
+                        align_value.reset();
+                        align_rate = 2;
                     }
+                }
+
+                HoldMode::Option(3) => {
+                    momentary_override_plus = true;
+                    momentary_override_z = true;
+                    align_mode = AlignMode::No;
+                    setting_time = SettingTime::No;
 
                     if option_mode != OptionMode::No {
+                        option_mode = OptionMode::No;
                         // Save options if exiting option mode!
                         settings.last_saved_brightness = eeprom_save_settings(
                             &mut ep,
@@ -980,16 +946,53 @@ fn main() -> ! {
                         );
                         leds.all_off(); // Blink LEDs off to indicate saving data
                         arduino_hal::delay_ms(100);
+                    } else {
+                        option_mode = OptionMode::Red;
+                        starting_option = 0;
                     }
-
-                    setting_time = SettingTime::No;
-                } else {
-                    // Go to setting mode IF and ONLY IF we were in regular-clock-display mode.
-                    setting_time = SettingTime::Hours; // Start with HOURS in setting mode.
                 }
 
-                align_mode = AlignMode::No;
-                option_mode = OptionMode::No;
+                HoldMode::TimeSet(3) => {
+                    momentary_override_z = true;
+
+                    if (align_mode != AlignMode::No)
+                        || (option_mode != OptionMode::No)
+                        || setting_time != SettingTime::No
+                    {
+                        // If we were in any of these modes, let's now return us to normalcy.
+                        // IF we are exiting time-setting mode, save the time to the RTC, if present:
+                        if setting_time != SettingTime::No && ext_rtc {
+                            rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
+                            leds.all_off(); // Blink LEDs off to indicate saving time
+                            arduino_hal::delay_ms(100);
+                        }
+
+                        if option_mode != OptionMode::No {
+                            // Save options if exiting option mode!
+                            settings.last_saved_brightness = eeprom_save_settings(
+                                &mut ep,
+                                settings.main_bright,
+                                settings.hr_bright,
+                                settings.min_bright,
+                                settings.sec_bright,
+                                settings.ccw,
+                                settings.fade_mode,
+                            );
+                            leds.all_off(); // Blink LEDs off to indicate saving data
+                            arduino_hal::delay_ms(100);
+                        }
+
+                        setting_time = SettingTime::No;
+                    } else {
+                        // Go to setting mode IF and ONLY IF we were in regular-clock-display mode.
+                        setting_time = SettingTime::Hours; // Start with HOURS in setting mode.
+                    }
+
+                    align_mode = AlignMode::No;
+                    option_mode = OptionMode::No;
+                }
+
+                _ => {}
             }
 
             // Note: this section could act funny if you hold the buttons for 256 or more seconds.
