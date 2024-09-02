@@ -1324,18 +1324,20 @@ fn main() -> ! {
 
         // 0-63 (6) * 0-63 (6) * 0-8 (3) dynamic range is 15 bits.
         // Shifted 7 puts the high bits into a u8.
-        let hr_disp_delay =
-            ((settings.hr_bright as u16 * fades.hr_disp as u16 * tempbright) >> 7) as u8;
-        let hr_next_delay =
-            ((settings.hr_bright as u16 * fades.hr_next as u16 * tempbright) >> 7) as u8;
-        let min_disp_delay =
-            ((settings.min_bright as u16 * fades.min_disp as u16 * tempbright) >> 7) as u8;
-        let min_next_delay =
-            ((settings.min_bright as u16 * fades.min_next as u16 * tempbright) >> 7) as u8;
-        let sec_disp_delay =
-            ((settings.sec_bright as u16 * fades.sec_disp as u16 * tempbright) >> 7) as u8;
-        let sec_next_delay =
-            ((settings.sec_bright as u16 * fades.sec_next as u16 * tempbright) >> 7) as u8;
+        macro_rules! calc_delay {
+            ($bright:expr, $disp:expr) => {{
+                (($bright as u16)
+                    .wrapping_mul($disp as u16)
+                    .wrapping_mul(tempbright)
+                    >> 7) as u8
+            }};
+        }
+        let hr_disp_delay = calc_delay!(settings.hr_bright, fades.hr_disp);
+        let hr_next_delay = calc_delay!(settings.hr_bright, fades.hr_next);
+        let min_disp_delay = calc_delay!(settings.min_bright, fades.min_disp);
+        let min_next_delay = calc_delay!(settings.min_bright, fades.min_next);
+        let sec_disp_delay = calc_delay!(settings.sec_bright, fades.sec_disp);
+        let sec_next_delay = calc_delay!(settings.sec_bright, fades.sec_next);
 
         // unsigned long  temp = millis();
 
