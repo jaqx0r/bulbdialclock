@@ -280,8 +280,8 @@ impl Fades {
             if sec_now & 1 != 0
             // ODD time
             {
-                self.sec_next = (63 * time_delta_ms / 1000) as u8;
-                self.sec_disp = 63 - self.sec_next;
+                self.sec_next = 63u16.wrapping_mul(time_delta_ms).wrapping_div(1000) as u8;
+                self.sec_disp = 63u8.wrapping_sub(self.sec_next);
             }
 
             // ODD time
@@ -310,8 +310,8 @@ const RTC_ADDRESS: u8 = 104;
 fn rtc_set_time(i2c: &mut arduino_hal::I2c, hour_in: u8, minute_in: u8, second_in: u8) {
     macro_rules! bcd_encode {
         ($v:expr) => {{
-            let t = $v / 10;
-            let o = $v - t * 10;
+            let t = $v.wrapping_div(10);
+            let o = $v.wrapping_sub(t).wrapping_mul(10);
             (t << 4) | o
         }};
     }
