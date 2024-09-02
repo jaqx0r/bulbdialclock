@@ -237,17 +237,17 @@ fn eeprom_save_settings(
 fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8, u8, u8) {
     // Offset by 30 s to project *shadow* in the right place.
     // Divide by two, since there are 30 LEDs, not 60.
-    let sec_disp = ((sec_now + 30) % 60) / 2;
-    let sec_next = (sec_disp + 1) % 30;
+    let sec_disp = (sec_now.wrapping_add(30) % 60).wrapping_div(2);
+    let sec_next = sec_disp.wrapping_add(1) % 30;
 
     // Offset by 30 m to project *shadow* in the right place.
     // Divide by two, since there are 30 LEDs, not 60.
-    let min_disp = ((min_now + 30) % 60) / 2;
-    let min_next = (min_disp + 1) % 30;
+    let min_disp = (min_now.wrapping_add(30) % 60).wrapping_div(2);
+    let min_next = min_disp.wrapping_add(1) % 30;
 
     // Offset by 6 h to project *shadow* in the right place.
-    let hr_disp = (hr_now + 6) % 12;
-    let hr_next = (hr_disp + 1) % 12;
+    let hr_disp = hr_now.wrapping_add(6) % 12;
+    let hr_next = hr_disp.wrapping_add(1) % 12;
 
     (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next)
 }
@@ -255,17 +255,17 @@ fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8,
 /// Fade multipliers for the hour, minute, and second rings.
 struct Fades {
     /// Hour ring fade multiplier for the outgoing LED. 0-63
-    hr_1: u8,
+    hr_disp: u8,
     /// Hour ring fade multiplier for the incoming LED. 0-63
-    hr_2: u8,
+    hr_next: u8,
     /// Minute ring fade multiplier for the outgoing LED. 0-63
-    min_1: u8,
+    min_disp: u8,
     /// Minute ring fade multiplier for the incoming LED. 0-63
-    min_2: u8,
+    min_next: u8,
     /// Second ring fade multiplier for the outgoing LED. 0-63
-    sec_1: u8,
+    sec_disp: u8,
     /// Second ring fade multiplier for the incoming LED. 0-63
-    sec_2: u8,
+    sec_next: u8,
 }
 
 impl Fades {
@@ -276,26 +276,26 @@ impl Fades {
             if sec_now & 1 != 0
             // ODD time
             {
-                self.sec_2 = (63 * time_delta_ms / 1000) as u8;
-                self.sec_1 = 63 - self.sec_2;
+                self.sec_next = (63 * time_delta_ms / 1000) as u8;
+                self.sec_disp = 63 - self.sec_next;
             }
 
             // ODD time
             if min_now & 1 != 0 && sec_now == 59 {
-                self.min_2 = self.sec_2;
-                self.min_1 = self.sec_1;
+                self.min_next = self.sec_next;
+                self.min_disp = self.sec_disp;
             }
 
             // End of the hour, only:
             if min_now == 59 && sec_now == 59 {
-                self.hr_2 = self.sec_2;
-                self.hr_1 = self.sec_1;
+                self.hr_next = self.sec_next;
+                self.hr_disp = self.sec_disp;
             }
         } else {
             // no fading
-            self.hr_1 = TEMP_FADE;
-            self.min_1 = TEMP_FADE;
-            self.sec_1 = TEMP_FADE;
+            self.hr_disp = TEMP_FADE;
+            self.min_disp = TEMP_FADE;
+            self.sec_disp = TEMP_FADE;
         }
     }
 }
@@ -1218,53 +1218,53 @@ fn main() -> ! {
         }
 
         let mut fades = Fades {
-            sec_2: 0,
-            sec_1: 63,
-            min_2: 0,
-            min_1: 63,
-            hr_2: 0,
-            hr_1: 63,
+            sec_next: 0,
+            sec_disp: 63,
+            min_next: 0,
+            min_disp: 63,
+            hr_next: 0,
+            hr_disp: 63,
         };
 
         if setting_time != SettingTime::No
         // i.e., if (SettingTime is nonzero)
         {
-            fades.hr_1 = 5;
-            fades.min_1 = 5;
-            fades.sec_1 = 5;
+            fades.hr_disp = 5;
+            fades.min_disp = 5;
+            fades.sec_disp = 5;
 
             if setting_time == SettingTime::Hours
             // hours
             {
-                fades.hr_1 = TEMP_FADE;
+                fades.hr_disp = TEMP_FADE;
             }
             if setting_time == SettingTime::Minutes
             // minutes
             {
-                fades.min_1 = TEMP_FADE;
+                fades.min_disp = TEMP_FADE;
             }
             if setting_time == SettingTime::Seconds
             // seconds
             {
-                fades.sec_1 = TEMP_FADE;
+                fades.sec_disp = TEMP_FADE;
             }
         } else if (align_mode != AlignMode::No) || option_mode != OptionMode::No
         // if either...
         {
-            fades.hr_1 = 0;
-            fades.min_1 = 0;
-            fades.sec_1 = 0;
+            fades.hr_disp = 0;
+            fades.min_disp = 0;
+            fades.sec_disp = 0;
 
             if align_mode != AlignMode::No {
                 match align_mode {
                     AlignMode::Hours(_) => {
-                        fades.hr_1 = TEMP_FADE;
+                        fades.hr_disp = TEMP_FADE;
                     }
                     AlignMode::Minutes(_) => {
-                        fades.min_1 = TEMP_FADE;
+                        fades.min_disp = TEMP_FADE;
                     }
                     AlignMode::Seconds(_) => {
-                        fades.sec_1 = TEMP_FADE;
+                        fades.sec_disp = TEMP_FADE;
                     }
                     _ => {}
                 }
@@ -1272,31 +1272,31 @@ fn main() -> ! {
                 // Must be OptionMode....
                 if starting_option < START_OPT_TIME_LIMIT {
                     if option_mode == OptionMode::Red {
-                        fades.hr_1 = TEMP_FADE;
+                        fades.hr_disp = TEMP_FADE;
                     }
                     if option_mode == OptionMode::Green {
-                        fades.min_1 = TEMP_FADE;
+                        fades.min_disp = TEMP_FADE;
                     }
                     if option_mode == OptionMode::Blue {
-                        fades.sec_1 = TEMP_FADE;
+                        fades.sec_disp = TEMP_FADE;
                     }
                     if option_mode == OptionMode::CounterClockwise
                     // CW vs CCW
                     {
-                        fades.sec_1 = TEMP_FADE;
-                        fades.min_1 = TEMP_FADE;
+                        fades.sec_disp = TEMP_FADE;
+                        fades.min_disp = TEMP_FADE;
                     }
                 } else {
                     // No longer in starting mode.
 
-                    fades.hr_1 = TEMP_FADE;
-                    fades.min_1 = TEMP_FADE;
-                    fades.sec_1 = TEMP_FADE;
+                    fades.hr_disp = TEMP_FADE;
+                    fades.min_disp = TEMP_FADE;
+                    fades.sec_disp = TEMP_FADE;
 
                     if option_mode == OptionMode::CounterClockwise
                     // CW vs CCW
                     {
-                        fades.hr_1 = 0;
+                        fades.hr_disp = 0;
                     } else {
                         fades.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
                     }
@@ -1316,17 +1316,17 @@ fn main() -> ! {
         // 0-63 (6) * 0-63 (6) * 0-8 (3) dynamic range is 15 bits.
         // Shifted 7 puts the high bits into a u8.
         let hr_disp_delay =
-            ((settings.hr_bright as u16 * fades.hr_1 as u16 * tempbright) >> 7) as u8;
+            ((settings.hr_bright as u16 * fades.hr_disp as u16 * tempbright) >> 7) as u8;
         let hr_next_delay =
-            ((settings.hr_bright as u16 * fades.hr_2 as u16 * tempbright) >> 7) as u8;
+            ((settings.hr_bright as u16 * fades.hr_next as u16 * tempbright) >> 7) as u8;
         let min_disp_delay =
-            ((settings.min_bright as u16 * fades.min_1 as u16 * tempbright) >> 7) as u8;
+            ((settings.min_bright as u16 * fades.min_disp as u16 * tempbright) >> 7) as u8;
         let min_next_delay =
-            ((settings.min_bright as u16 * fades.min_2 as u16 * tempbright) >> 7) as u8;
+            ((settings.min_bright as u16 * fades.min_next as u16 * tempbright) >> 7) as u8;
         let sec_disp_delay =
-            ((settings.sec_bright as u16 * fades.sec_1 as u16 * tempbright) >> 7) as u8;
+            ((settings.sec_bright as u16 * fades.sec_disp as u16 * tempbright) >> 7) as u8;
         let sec_next_delay =
-            ((settings.sec_bright as u16 * fades.sec_2 as u16 * tempbright) >> 7) as u8;
+            ((settings.sec_bright as u16 * fades.sec_next as u16 * tempbright) >> 7) as u8;
 
         // unsigned long  temp = millis();
 
