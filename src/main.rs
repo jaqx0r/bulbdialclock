@@ -508,7 +508,7 @@ impl AlignValue {
     /// Decrement the alignment value, wrapping past zero based on the alignment mode.
     fn decr(&mut self, align_mode: &AlignMode) {
         if self.value > 0 {
-            self.value -= 1;
+            self.value = self.value.wrapping_sub(1);
         } else {
             match align_mode {
                 AlignMode::Seconds(_) | AlignMode::Minutes(_) => {
@@ -685,7 +685,7 @@ fn main() -> ! {
             if !plus_copy && plus_last {
                 // "+" Button was pressed previously, and was just released!
 
-                if momentary_override_plus  {
+                if momentary_override_plus {
                     momentary_override_plus = false;
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
@@ -700,13 +700,13 @@ fn main() -> ! {
                     }
                 } else if option_mode != OptionMode::No {
                     if option_mode == OptionMode::Red && settings.hr_bright < 62 {
-                        settings.hr_bright += 2;
+                        settings.hr_bright = settings.hr_bright.wrapping_add(2);
                     }
                     if option_mode == OptionMode::Green && settings.min_bright < 62 {
-                        settings.min_bright += 2;
+                        settings.min_bright = settings.min_bright.wrapping_add(2);
                     }
                     if option_mode == OptionMode::Blue && settings.sec_bright < 62 {
-                        settings.sec_bright += 2;
+                        settings.sec_bright = settings.sec_bright.wrapping_add(2);
                     }
                     if option_mode == OptionMode::CounterClockwise {
                         settings.ccw = false;
@@ -748,7 +748,7 @@ fn main() -> ! {
                 vcr_mode = false; // End once any buttons have been pressed...
                 time_since_button = 0;
 
-                if momentary_override_minus  {
+                if momentary_override_minus {
                     momentary_override_minus = false;
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
@@ -756,20 +756,20 @@ fn main() -> ! {
                 } else if align_mode != AlignMode::No {
                     if align_mode.is_auto_advance() {
                         if align_rate > -3 {
-                            align_rate -= 1;
+                            align_rate = align_rate.wrapping_sub(1);
                         }
                     } else {
                         align_value.decr(&align_mode);
                     }
                 } else if option_mode != OptionMode::No {
                     if option_mode == OptionMode::Red && settings.hr_bright > 1 {
-                        settings.hr_bright -= 2;
+                        settings.hr_bright = settings.hr_bright.wrapping_sub(2);
                     }
                     if option_mode == OptionMode::Green && settings.min_bright > 1 {
-                        settings.min_bright -= 2;
+                        settings.min_bright = settings.min_bright.wrapping_sub(2);
                     }
                     if option_mode == OptionMode::Blue && settings.sec_bright > 1 {
-                        settings.sec_bright -= 2;
+                        settings.sec_bright = settings.min_bright.wrapping_sub(2);
                     }
                     if option_mode == OptionMode::CounterClockwise {
                         settings.ccw = true;
@@ -780,21 +780,21 @@ fn main() -> ! {
                 } else if setting_time != SettingTime::No {
                     if setting_time == SettingTime::Hours {
                         if hr_now > 0 {
-                            hr_now -= 1;
+                            hr_now = hr_now.wrapping_sub(1);
                         } else {
                             hr_now = 11;
                         }
                     }
                     if setting_time == SettingTime::Minutes {
                         if min_now > 0 {
-                            min_now -= 1;
+                            min_now = min_now.wrapping_sub(1);
                         } else {
                             min_now = 59;
                         }
                     }
                     if setting_time == SettingTime::Seconds {
                         if sec_now > 0 {
-                            sec_now -= 1;
+                            sec_now = sec_now.wrapping_sub(1);
                         } else {
                             sec_now = 59;
                         }
@@ -802,7 +802,7 @@ fn main() -> ! {
                 } else {
                     // Normal brightness adjustment mode
                     if settings.main_bright > 1 {
-                        settings.main_bright -= 1;
+                        settings.main_bright = settings.main_bright.wrapping_sub(1);
                     } else {
                         settings.main_bright = 8;
                     }
@@ -1021,26 +1021,28 @@ fn main() -> ! {
                         // Skip checking if minutes == 0. -- the 12:00:00 rollover is distracting,
                         // UNLESS this is the first time running after reset.
 
-                        let mut updatetime = false;
-                        if (minutes != 0) && (min_now != 0) {
-                            let temptime1: i16 =
-                                3600 * hours as i16 + 60 * minutes as i16 + seconds as i16; // Values read from RTC
-                            let temptime2: i16 =
-                                3600 * hr_now as i16 + 60 * min_now as i16 + sec_now as i16; // Internally stored time estimate.
+                        let updatetime = if (minutes != 0) && (min_now != 0) {
+                            // Values read from RTC
+                            let temptime1: i16 = 3600i16
+                                .wrapping_mul(hours as i16)
+                                .wrapping_add(60i16.wrapping_mul(minutes as i16))
+                                .wrapping_add(seconds as i16);
+                            // Internally stored time estimate.
+                            let temptime2: i16 = 3600i16
+                                .wrapping_mul(hr_now as i16)
+                                .wrapping_add(60i16.wrapping_mul(min_now as i16))
+                                .wrapping_add(sec_now as i16);
 
                             if temptime1 > temptime2 {
-                                if (temptime1 - temptime2) > 2 {
-                                    updatetime = true;
-                                }
-                            } else if (temptime2 - temptime1) > 2 {
-                                updatetime = true;
+                                temptime1.wrapping_sub(temptime2) > 2
+                            } else {
+                                temptime2.wrapping_sub(temptime1) > 2
                             }
-                        }
+                        } else {
+                            // if (ExtRTC) is equivalent to saying,  "if this has run before"
+                            !ext_rtc
+                        };
 
-                        // if (ExtRTC) is equivalent to saying,  "if this has run before"
-                        if !ext_rtc {
-                            updatetime = true;
-                        }
                         if updatetime {
                             sec_now = seconds;
                             min_now = minutes;
@@ -1048,7 +1050,7 @@ fn main() -> ! {
 
                             // Convert 24-hour mode to 12-hour mode
                             if hr_now > 11 {
-                                hr_now -= 12;
+                                hr_now = hr_now.wrapping_sub(12);
                             }
                         }
                     }
@@ -1107,15 +1109,15 @@ fn main() -> ! {
                     _ => {}
                 }
 
-                sec_disp = align_value.value() + 15; // Offset by 30 s to project *shadow* in the right place.
+                sec_disp = align_value.value().wrapping_add(15); // Offset by 30 s to project *shadow* in the right place.
                 if sec_disp > 29 {
-                    sec_disp -= 30;
+                    sec_disp = sec_disp.wrapping_sub(30);
                 }
                 min_disp = sec_disp;
-                hr_disp = align_value.value() + 6; // Offset by 6 h to project *shadow* in the right place.
+                hr_disp = align_value.value().wrapping_add(6); // Offset by 6 h to project *shadow* in the right place.
 
                 if hr_disp > 11 {
-                    hr_disp -= 12;
+                    hr_disp = hr_disp.wrapping_sub(12);
                 }
             } else if option_mode != OptionMode::No {
                 // Option setting mode
@@ -1383,9 +1385,14 @@ fn main() -> ! {
             }
 
             if settings.main_bright < 8 {
-                delay_time((8 - settings.main_bright) << 5);
-                delay_time((8 - settings.main_bright) << 5);
-                delay_time((8 - settings.main_bright) << 5);
+                let dt = 8u8.wrapping_sub(settings.main_bright) << 5;
+                delay_time(dt);
+                delay_time(dt);
+                delay_time(dt)
+
+                // delay_time(8.wrapping_sub(settings.main_bright).wrapping_rotate_right(5));
+                // delay_time(8.WRAPPING - settings.main_bright) << 5);
+                // delay_time((8 - settings.main_bright) << 5);
             }
         }
 
