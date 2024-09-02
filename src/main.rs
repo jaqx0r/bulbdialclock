@@ -662,7 +662,7 @@ fn main() -> ! {
             true
         }
         Err(e) => {
-            ufmt::uwriteln!(&mut s_tx, "i2c error in rtc_get_time: {:?}", e).unwrap();
+            ufmt::uwriteln!(&mut s_tx, "i2c error in rtc_get_time: {:?}", e).unwrap_infallible();
             false
         }
     };
@@ -1401,11 +1401,12 @@ fn main() -> ! {
 
             if hr_now > 11 {
                 // Convert 24-hour mode to 12-hour mode
-                hr_now -= 12;
+                hr_now = hr_now.wrapping_sub(12);
             }
 
             // Print confirmation
-            ufmt::uwriteln!(s_tx, "Clock synced at: {}:{}:{}", hr_now, min_now, sec_now).unwrap();
+            ufmt::uwriteln!(s_tx, "Clock synced at: {}:{}:{}", hr_now, min_now, sec_now)
+                .unwrap_infallible();
 
             if ext_rtc {
                 rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
