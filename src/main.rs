@@ -85,7 +85,9 @@ const BLUE_BRIGHT_DEFAULT: u8 = 63;
 const CCW_DEFAULT: bool = false;
 const FADE_MODE_DEFAULT: bool = true;
 
+#[cfg(feature = "serial-sync")]
 const TIME_MSG_LEN: usize = 11; // time sync to PC is HEADER followed by unix time_t as ten ascii digits
+#[cfg(feature = "serial-sync")]
 const TIME_HEADER: u8 = 255; // Header tag for serial time sync message
 
 const TEMP_FADE: u8 = 63;
@@ -110,6 +112,7 @@ fn delay_time(time: u8) {
     }
 }
 
+#[cfg(feature = "serial-sync")]
 type SerialReader = arduino_hal::usart::UsartReader<
     arduino_hal::pac::USART0,
     arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Input, arduino_hal::hal::port::PD0>,
@@ -117,6 +120,7 @@ type SerialReader = arduino_hal::usart::UsartReader<
 >;
 
 /// Try to read a time from the serial port, returning either a parsed time or nothing.
+#[cfg(feature = "serial-sync")]
 fn get_pc_time(s_rx: &mut SerialReader) -> Option<(u8, u8, u8)> {
     // if time sync available from serial port, update time and return true
     match s_rx.read() {
@@ -591,6 +595,9 @@ fn main() -> ! {
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 19200);
 
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    // s_rx unused if serial-sync feature disabled
     let (mut s_rx, mut s_tx) = {
         #[cfg(feature = "panic-serial")]
         {
@@ -1388,6 +1395,7 @@ fn main() -> ! {
          */
 
         // Can this sync be tried only once per second?
+        #[cfg(feature = "serial-sync")]
         if let Some(v) = get_pc_time(&mut s_rx) {
             (hr_now, min_now, sec_now) = v;
 
