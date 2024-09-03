@@ -68,9 +68,6 @@ struct Settings {
     /// Fade style (Range: 0,1)         Default: 1  (Fade enabled)
     fade_mode: bool,
 
-    /// Alignment mode                  Default: 0
-    // bool; never used
-
     // Last brightness saved to EEPROM used to determine if changed.
     last_saved_brightness: u8,
 }
@@ -219,8 +216,6 @@ fn eeprom_save_settings(
     ccw: bool,
     fade_mode: bool,
 ) -> u8 {
-    //EEPROM.write(Addr, Value);
-
     // Careful if you use  this function: EEPROM has a limited number of write
     // cycles in its life.  Good for human-operated buttons, bad for automation.
 
@@ -231,9 +226,6 @@ fn eeprom_save_settings(
     eeprom.write_byte(4, if ccw { 1 } else { 0 });
     eeprom.write_byte(5, if fade_mode { 1 } else { 0 });
 
-    // Optional: Blink LEDs off to indicate when we're writing to the EEPROM
-    // leds.all_off();
-    // delay(100);
     main_bright
 }
 
@@ -277,15 +269,14 @@ impl Fades {
     fn normal(&mut self, time_delta_ms: u16, fade_mode: bool, sec_now: u8, min_now: u8) {
         if fade_mode {
             // Normal time display
-            if sec_now & 1 != 0
-            // ODD time
-            {
+            if sec_now & 1 != 0 {
+                // ODD time
                 self.sec_next = 63u16.wrapping_mul(time_delta_ms).wrapping_div(1000) as u8;
                 self.sec_disp = 63u8.wrapping_sub(self.sec_next);
             }
 
-            // ODD time
             if min_now & 1 != 0 && sec_now == 59 {
+                // ODD time
                 self.min_next = self.sec_next;
                 self.min_disp = self.sec_disp;
             }
@@ -399,14 +390,13 @@ impl Leds {
 
 const START_OPT_TIME_LIMIT: u8 = 30;
 
-/// SettingTime enumaretes the time setting states.
+/// SettingTime enumerates the time setting states.
 #[derive(PartialEq)]
 enum SettingTime {
     No,
     Hours,
     Minutes,
     Seconds,
-    // "4: not setting time"
 }
 
 impl SettingTime {
@@ -638,14 +628,6 @@ fn main() -> ! {
 
     // Pull up inputs are HIGH when open, and LOW when pressed.
     let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
-    // ButtonHold = 0;
-
-    /*
-    // HIGHLY OPTIONAL: Set jardcoded RTC Time from within the program.
-    // Example: Set time to 2:52:45.
-
-    RTCsetTime(2,52,45);
-    */
 
     let mut i2c = arduino_hal::I2c::new(
         dp.TWI,
@@ -676,9 +658,9 @@ fn main() -> ! {
 
         let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
 
-        if plus_copy != plus_last || minus_copy != minus_last || z_copy != z_last
-        // Button change detected
-        {
+        if plus_copy != plus_last || minus_copy != minus_last || z_copy != z_last {
+            // Button change detected
+
             vcr_mode = false; // End once any buttons have been pressed...
             time_since_button = 0;
 
@@ -1086,8 +1068,6 @@ fn main() -> ! {
                             (-align_rate) as u8
                         };
 
-                        // Serial.println(AlignRateAbs,DEC);
-
                         align_loop_count = align_loop_count.wrapping_add(1);
 
                         let scale_rate: u8 = match 2.cmp(&align_rate_abs) {
@@ -1129,25 +1109,22 @@ fn main() -> ! {
                         align_loop_count = 0;
                         starting_option = starting_option.wrapping_add(1);
 
-                        if option_mode == OptionMode::Red
-                        // Red (upper) ring color balance
-                        {
+                        if option_mode == OptionMode::Red {
+                            // Red (upper) ring color balance
                             hr_disp = hr_disp.wrapping_add(1);
                             if hr_disp > 11 {
                                 hr_disp = 0;
                             }
                         }
-                        if option_mode == OptionMode::Green
-                        // Green (middle) ring color balance
-                        {
+                        if option_mode == OptionMode::Green {
+                            // Green (middle) ring color balance
                             min_disp = min_disp.wrapping_add(1);
                             if min_disp > 29 {
                                 min_disp = 0;
                             }
                         }
-                        if option_mode == OptionMode::Blue
-                        // Blue (lower) ring color balance
-                        {
+                        if option_mode == OptionMode::Blue {
+                            // Blue (lower) ring color balance
                             sec_disp = sec_disp.wrapping_add(1);
                             if sec_disp > 29 {
                                 sec_disp = 0;
@@ -1155,12 +1132,12 @@ fn main() -> ! {
                         }
                         if option_mode == OptionMode::CounterClockwise
                             || option_mode == OptionMode::Fade
-                        // CW vs CCW OR fade mode
                         {
+                            // CW vs CCW OR fade mode
                             starting_option = START_OPT_TIME_LIMIT; // Exit this loop
                         }
                     }
-                } // end "if (StartingOption < StartOptTimeLimit){}"
+                }
 
                 if starting_option >= START_OPT_TIME_LIMIT {
                     if option_mode == OptionMode::CounterClockwise {
@@ -1235,31 +1212,23 @@ fn main() -> ! {
             hr_disp: 63,
         };
 
-        if setting_time != SettingTime::No
-        // i.e., if (SettingTime is nonzero)
-        {
+        if setting_time != SettingTime::No {
+            // i.e., if (SettingTime is nonzero)
             fades.hr_disp = 5;
             fades.min_disp = 5;
             fades.sec_disp = 5;
 
-            if setting_time == SettingTime::Hours
-            // hours
-            {
+            if setting_time == SettingTime::Hours {
                 fades.hr_disp = TEMP_FADE;
             }
-            if setting_time == SettingTime::Minutes
-            // minutes
-            {
+            if setting_time == SettingTime::Minutes {
                 fades.min_disp = TEMP_FADE;
             }
-            if setting_time == SettingTime::Seconds
-            // seconds
-            {
+            if setting_time == SettingTime::Seconds {
                 fades.sec_disp = TEMP_FADE;
             }
-        } else if (align_mode != AlignMode::No) || option_mode != OptionMode::No
-        // if either...
-        {
+        } else if (align_mode != AlignMode::No) || option_mode != OptionMode::No {
+            // if either...
             fades.hr_disp = 0;
             fades.min_disp = 0;
             fades.sec_disp = 0;
@@ -1302,9 +1271,8 @@ fn main() -> ! {
                     fades.min_disp = TEMP_FADE;
                     fades.sec_disp = TEMP_FADE;
 
-                    if option_mode == OptionMode::CounterClockwise
-                    // CW vs CCW
-                    {
+                    if option_mode == OptionMode::CounterClockwise {
+                        // CW vs CCW
                         fades.hr_disp = 0;
                     } else {
                         fades.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
@@ -1315,7 +1283,6 @@ fn main() -> ! {
             fades.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
         }
 
-        // if setting_time != 0
         let tempbright: u16 = if sleep_mode || (vcr_mode && (sec_now & 1 != 0)) {
             0
         } else {
@@ -1338,8 +1305,6 @@ fn main() -> ! {
         let min_next_delay = calc_delay!(settings.min_bright, fades.min_next);
         let sec_disp_delay = calc_delay!(settings.sec_bright, fades.sec_disp);
         let sec_next_delay = calc_delay!(settings.sec_bright, fades.sec_next);
-
-        // unsigned long  temp = millis();
 
         // This is the loop where we actually light up the LEDs:
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
@@ -1390,18 +1355,9 @@ fn main() -> ! {
                 let dt = 8u8.wrapping_sub(settings.main_bright) << 5;
                 delay_time(dt);
                 delay_time(dt);
-                delay_time(dt)
-
-                // delay_time(8.wrapping_sub(settings.main_bright).wrapping_rotate_right(5));
-                // delay_time(8.WRAPPING - settings.main_bright) << 5);
-                // delay_time((8 - settings.main_bright) << 5);
+                delay_time(dt);
             }
         }
-
-        /*
-        temp = millis() - temp;
-        Serial.println(temp,DEC);
-         */
 
         // Can this sync be tried only once per second?
         #[cfg(feature = "serial-sync")]
