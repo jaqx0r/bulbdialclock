@@ -697,22 +697,25 @@ fn main() -> ! {
                         settings.fade_mode = true;
                     }
                 } else if setting_time != SettingTime::No {
-                    if setting_time == SettingTime::Hours {
-                        hr_now = hr_now.wrapping_add(1);
-                        if hr_now > 11 {
-                            hr_now = 0;
+                    match setting_time {
+                        SettingTime::No => {}
+                        SettingTime::Hours => {
+                            hr_now = hr_now.wrapping_add(1);
+                            if hr_now > 11 {
+                                hr_now = 0;
+                            }
                         }
-                    }
-                    if setting_time == SettingTime::Minutes {
-                        min_now = min_now.wrapping_add(1);
-                        if min_now > 59 {
-                            min_now = 0;
+                        SettingTime::Minutes => {
+                            min_now = min_now.wrapping_add(1);
+                            if min_now > 59 {
+                                min_now = 0;
+                            }
                         }
-                    }
-                    if setting_time == SettingTime::Seconds {
-                        sec_now = sec_now.wrapping_add(1);
-                        if sec_now > 59 {
-                            sec_now = 0;
+                        SettingTime::Seconds => {
+                            sec_now = sec_now.wrapping_add(1);
+                            if sec_now > 59 {
+                                sec_now = 0;
+                            }
                         }
                     }
                 } else {
@@ -760,25 +763,28 @@ fn main() -> ! {
                         settings.fade_mode = false;
                     }
                 } else if setting_time != SettingTime::No {
-                    if setting_time == SettingTime::Hours {
-                        if hr_now > 0 {
-                            hr_now = hr_now.wrapping_sub(1);
-                        } else {
-                            hr_now = 11;
+                    match setting_time {
+                        SettingTime::No => {}
+                        SettingTime::Hours => {
+                            if hr_now > 0 {
+                                hr_now = hr_now.wrapping_sub(1);
+                            } else {
+                                hr_now = 11;
+                            }
                         }
-                    }
-                    if setting_time == SettingTime::Minutes {
-                        if min_now > 0 {
-                            min_now = min_now.wrapping_sub(1);
-                        } else {
-                            min_now = 59;
+                        SettingTime::Minutes => {
+                            if min_now > 0 {
+                                min_now = min_now.wrapping_sub(1);
+                            } else {
+                                min_now = 59;
+                            }
                         }
-                    }
-                    if setting_time == SettingTime::Seconds {
-                        if sec_now > 0 {
-                            sec_now = sec_now.wrapping_sub(1);
-                        } else {
-                            sec_now = 59;
+                        SettingTime::Seconds => {
+                            if sec_now > 0 {
+                                sec_now = sec_now.wrapping_sub(1);
+                            } else {
+                                sec_now = 59;
+                            }
                         }
                     }
                 } else {
@@ -1218,14 +1224,17 @@ fn main() -> ! {
             fades.min_disp = 5;
             fades.sec_disp = 5;
 
-            if setting_time == SettingTime::Hours {
-                fades.hr_disp = TEMP_FADE;
-            }
-            if setting_time == SettingTime::Minutes {
-                fades.min_disp = TEMP_FADE;
-            }
-            if setting_time == SettingTime::Seconds {
-                fades.sec_disp = TEMP_FADE;
+            match setting_time {
+                SettingTime::No => {}
+                SettingTime::Hours => {
+                    fades.hr_disp = TEMP_FADE;
+                }
+                SettingTime::Minutes => {
+                    fades.min_disp = TEMP_FADE;
+                }
+                SettingTime::Seconds => {
+                    fades.sec_disp = TEMP_FADE;
+                }
             }
         } else if (align_mode != AlignMode::No) || option_mode != OptionMode::No {
             // if either...
