@@ -32,6 +32,7 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
+mod settings;
 mod timer;
 use crate::timer::*;
 use arduino_hal::{hal::port, prelude::*};
@@ -48,60 +49,12 @@ panic_serial::impl_panic_handler!(
     >
 );
 
-/// EEPROM variables that are saved:  7
-struct Settings {
-    /// Brightness setting (range: 1-8)  Default: 8   (Fully bright)
-    main_bright: u8,
-
-    /// Red brightness  (range: 0-63)    Default: 20 (But initialized to 30 in original!  TODO add feature for monocrhome)
-    hr_bright: u8,
-
-    /// Green brightness (range: 0-63)   Default: 63
-    min_bright: u8,
-
-    /// Blue brightness (range: 0-63)    Default: 63
-    sec_bright: u8,
-
-    /// Time direction (Range: 0,1)      Default: 0  (Clockwise)
-    ccw: bool,
-
-    /// Fade style (Range: 0,1)         Default: 1  (Fade enabled)
-    fade_mode: bool,
-
-    // Last brightness saved to EEPROM used to determine if changed.
-    last_saved_brightness: u8,
-}
-
-// "Factory" default configuration can be configured here:
-const MAIN_BRIGHT_DEFAULT: u8 = 8;
-
-const RED_BRIGHT_DEFAULT: u8 = 63; // Use 63, default, for kits with monochrome LEDs!
-const GREEN_BRIGHT_DEFAULT: u8 = 63;
-const BLUE_BRIGHT_DEFAULT: u8 = 63;
-
-const CCW_DEFAULT: bool = false;
-const FADE_MODE_DEFAULT: bool = true;
-
 #[cfg(feature = "serial-sync")]
 const TIME_MSG_LEN: usize = 11; // time sync to PC is HEADER followed by unix time_t as ten ascii digits
 #[cfg(feature = "serial-sync")]
 const TIME_HEADER: u8 = 255; // Header tag for serial time sync message
 
 const TEMP_FADE: u8 = 63;
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            main_bright: MAIN_BRIGHT_DEFAULT,
-            hr_bright: RED_BRIGHT_DEFAULT,
-            min_bright: GREEN_BRIGHT_DEFAULT,
-            sec_bright: BLUE_BRIGHT_DEFAULT,
-            ccw: CCW_DEFAULT,
-            fade_mode: FADE_MODE_DEFAULT,
-            last_saved_brightness: MAIN_BRIGHT_DEFAULT,
-        }
-    }
-}
 
 fn delay_time(time: u8) {
     for _ in 0..time {
@@ -168,66 +121,6 @@ const MIN_LO: [u8; 30] = [
 
 const HR_HI: [u8; 12] = [10, 1, 2, 10, 10, 6, 3, 10, 10, 4, 5, 10];
 const HR_LO: [u8; 12] = [1, 10, 10, 2, 6, 10, 10, 3, 4, 10, 10, 5];
-
-/// Read the EEPROM into settings, or return a default if an error occurs during read.
-#[must_use]
-fn eeprom_read_settings(eeprom: &arduino_hal::Eeprom) -> Settings {
-    let mut vals: [u8; 7] = [255; 7];
-    if eeprom.read(0, &mut vals).is_err() {
-        return Settings::default();
-    }
-    let main_bright = match vals[0] {
-        v @ 1..=MAIN_BRIGHT_DEFAULT => v,
-        _ => MAIN_BRIGHT_DEFAULT,
-    };
-    Settings {
-        main_bright,
-        hr_bright: match vals[1] {
-            v @ 0..=RED_BRIGHT_DEFAULT => v,
-            _ => RED_BRIGHT_DEFAULT,
-        },
-        min_bright: match vals[2] {
-            v @ 0..=GREEN_BRIGHT_DEFAULT => v,
-            _ => GREEN_BRIGHT_DEFAULT,
-        },
-        sec_bright: match vals[3] {
-            v @ 0..=BLUE_BRIGHT_DEFAULT => v,
-            _ => BLUE_BRIGHT_DEFAULT,
-        },
-        ccw: match vals[4] {
-            v @ 0..=1 => v == 1,
-            _ => CCW_DEFAULT,
-        },
-        fade_mode: match vals[5] {
-            v @ 0..=1 => v == 1,
-            _ => FADE_MODE_DEFAULT,
-        },
-        last_saved_brightness: main_bright,
-    }
-}
-
-#[must_use]
-fn eeprom_save_settings(
-    eeprom: &mut arduino_hal::Eeprom,
-    main_bright: u8,
-    hour_bright: u8,
-    min_bright: u8,
-    sec_bright: u8,
-    ccw: bool,
-    fade_mode: bool,
-) -> u8 {
-    // Careful if you use  this function: EEPROM has a limited number of write
-    // cycles in its life.  Good for human-operated buttons, bad for automation.
-
-    eeprom.write_byte(0, main_bright);
-    eeprom.write_byte(1, hour_bright);
-    eeprom.write_byte(2, min_bright);
-    eeprom.write_byte(3, sec_bright);
-    eeprom.write_byte(4, if ccw { 1 } else { 0 });
-    eeprom.write_byte(5, if fade_mode { 1 } else { 0 });
-
-    main_bright
-}
 
 #[must_use]
 fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8, u8, u8) {
@@ -624,7 +517,7 @@ fn main() -> ! {
     );
 
     let mut ep = arduino_hal::Eeprom::new(dp.EEPROM);
-    let mut settings = eeprom_read_settings(&ep);
+    let mut settings = settings::eeprom_read_settings(&ep);
 
     // Pull up inputs are HIGH when open, and LOW when pressed.
     let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
@@ -851,7 +744,7 @@ fn main() -> ! {
                     if time_since_button == 10
                         && settings.last_saved_brightness != settings.main_bright
                     {
-                        settings.last_saved_brightness = eeprom_save_settings(
+                        settings.last_saved_brightness = settings::eeprom_save_settings(
                             &mut ep,
                             settings.main_bright,
                             settings.hr_bright,
@@ -900,8 +793,8 @@ fn main() -> ! {
 
                     // Hold + and - for 3 s AT POWER ON to restore factory settings.
                     if !factory_reset_disable {
-                        settings = Settings::default();
-                        settings.last_saved_brightness = eeprom_save_settings(
+                        settings = settings::Settings::default();
+                        settings.last_saved_brightness = settings::eeprom_save_settings(
                             &mut ep,
                             settings.main_bright,
                             settings.hr_bright,
@@ -930,7 +823,7 @@ fn main() -> ! {
                     if option_mode != OptionMode::No {
                         option_mode = OptionMode::No;
                         // Save options if exiting option mode!
-                        settings.last_saved_brightness = eeprom_save_settings(
+                        settings.last_saved_brightness = settings::eeprom_save_settings(
                             &mut ep,
                             settings.main_bright,
                             settings.hr_bright,
@@ -964,7 +857,7 @@ fn main() -> ! {
 
                         if option_mode != OptionMode::No {
                             // Save options if exiting option mode!
-                            settings.last_saved_brightness = eeprom_save_settings(
+                            settings.last_saved_brightness = settings::eeprom_save_settings(
                                 &mut ep,
                                 settings.main_bright,
                                 settings.hr_bright,
