@@ -38,6 +38,9 @@ use crate::timer::*;
 use arduino_hal::{hal::port, prelude::*};
 use core::cmp::Ordering;
 
+#[cfg(feature="serial-sync")]
+mod pc_sync;
+
 #[cfg(not(feature = "panic-serial"))]
 use panic_halt as _;
 #[cfg(feature = "panic-serial")]
@@ -49,11 +52,6 @@ panic_serial::impl_panic_handler!(
     >
 );
 
-#[cfg(feature = "serial-sync")]
-const TIME_MSG_LEN: usize = 11; // time sync to PC is HEADER followed by unix time_t as ten ascii digits
-#[cfg(feature = "serial-sync")]
-const TIME_HEADER: u8 = 255; // Header tag for serial time sync message
-
 const TEMP_FADE: u8 = 63;
 
 fn delay_time(time: u8) {
@@ -62,48 +60,6 @@ fn delay_time(time: u8) {
     }
 }
 
-#[cfg(feature = "serial-sync")]
-type SerialReader = arduino_hal::usart::UsartReader<
-    arduino_hal::pac::USART0,
-    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Input, arduino_hal::hal::port::PD0>,
-    arduino_hal::hal::port::Pin<arduino_hal::hal::port::mode::Output, arduino_hal::hal::port::PD1>,
->;
-
-/// Try to read a time from the serial port, returning either a parsed time or nothing.
-#[cfg(feature = "serial-sync")]
-fn get_pc_time(s_rx: &mut SerialReader) -> Option<(u8, u8, u8)> {
-    // if time sync available from serial port, update time and return true
-    match s_rx.read() {
-        Ok(TIME_HEADER) => {
-            // read unix time from serial port, header byte and ten ascii digits
-            let mut pctime: u32 = 0;
-            for _ in 0..TIME_MSG_LEN {
-                match s_rx.read() {
-                    Ok(c) => {
-                        if let Some(d) = char::from(c).to_digit(10) {
-                            pctime = pctime.wrapping_mul(10).wrapping_add(d);
-                        }
-                    }
-                    _ => return None,
-                }
-            }
-            let sec_now: u8 = match (pctime % 60).try_into() {
-                Ok(v) => v,
-                Err(_) => return None,
-            };
-            let min_now: u8 = match ((pctime / 60) % 60).try_into() {
-                Ok(v) => v,
-                Err(_) => return None,
-            };
-            let hr_now: u8 = match ((pctime / 60 / 60) % 12).try_into() {
-                Ok(v) => v,
-                Err(_) => return None,
-            };
-            Some((hr_now, min_now, sec_now))
-        }
-        _ => None,
-    }
-}
 
 const SEC_HI: [u8; 30] = [
     2, 3, 4, 5, 6, 1, 3, 4, 5, 6, 1, 2, 4, 5, 6, 1, 2, 3, 5, 6, 1, 2, 3, 4, 6, 1, 2, 3, 4, 5,
@@ -1263,7 +1219,7 @@ fn main() -> ! {
 
         // Can this sync be tried only once per second?
         #[cfg(feature = "serial-sync")]
-        if let Some(v) = get_pc_time(&mut s_rx) {
+        if let Some(v) = pc_sync::get_pc_time(&mut s_rx) {
             (hr_now, min_now, sec_now) = v;
 
             // Print confirmation
