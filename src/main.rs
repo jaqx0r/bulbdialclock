@@ -95,7 +95,7 @@ fn get_pc_time(s_rx: &mut SerialReader) -> Option<(u8, u8, u8)> {
                 Ok(v) => v,
                 Err(_) => return None,
             };
-            let hr_now: u8 = match ((pctime / 60 / 60) % 24).try_into() {
+            let hr_now: u8 = match ((pctime / 60 / 60) % 12).try_into() {
                 Ok(v) => v,
                 Err(_) => return None,
             };
@@ -1265,11 +1265,6 @@ fn main() -> ! {
         #[cfg(feature = "serial-sync")]
         if let Some(v) = get_pc_time(&mut s_rx) {
             (hr_now, min_now, sec_now) = v;
-
-            if hr_now > 11 {
-                // Convert 24-hour mode to 12-hour mode
-                hr_now = hr_now.wrapping_sub(12);
-            }
 
             // Print confirmation
             ufmt::uwriteln!(s_tx, "Clock synced at: {}:{}:{}", hr_now, min_now, sec_now)
