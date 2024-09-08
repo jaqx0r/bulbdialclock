@@ -81,7 +81,7 @@ fn get_pc_time(s_rx: &mut SerialReader) -> Option<(u8, u8, u8)> {
                 match s_rx.read() {
                     Ok(c) => {
                         if let Some(d) = char::from(c).to_digit(10) {
-                            pctime = (10 * pctime) + d;
+                            pctime = pctime.wrapping_mul(10).wrapping_add(d);
                         }
                     }
                     _ => return None,
