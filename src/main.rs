@@ -34,6 +34,7 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
 mod settings;
 mod timer;
+mod ds3231;
 use crate::timer::*;
 use arduino_hal::{hal::port, prelude::*};
 use core::cmp::Ordering;
@@ -59,7 +60,6 @@ fn delay_time(time: u8) {
         avr_device::asm::nop();
     }
 }
-
 
 const SEC_HI: [u8; 30] = [
     2, 3, 4, 5, 6, 1, 3, 4, 5, 6, 1, 2, 4, 5, 6, 1, 2, 3, 5, 6, 1, 2, 3, 4, 6, 1, 2, 3, 4, 5,
@@ -144,38 +144,6 @@ impl Fades {
     }
 }
 
-// 104 is the DS3231 RTC device address
-const RTC_ADDRESS: u8 = 104;
-
-fn rtc_set_time(i2c: &mut arduino_hal::I2c, hour_in: u8, minute_in: u8, second_in: u8) {
-    macro_rules! bcd_encode {
-        ($v:expr) => {{
-            let t = $v.wrapping_div(10);
-            let o = $v.wrapping_sub(t).wrapping_mul(10);
-            (t << 4) | o
-        }};
-    }
-    let buf: [u8; 3] = [
-        bcd_encode!(second_in),
-        bcd_encode!(minute_in),
-        bcd_encode!(hour_in),
-    ];
-    i2c.write(RTC_ADDRESS, &buf).unwrap(); // TODO handle result.
-}
-
-fn rtc_get_time(i2c: &mut arduino_hal::I2c) -> Result<(u8, u8, u8), arduino_hal::i2c::Error> {
-    // Read out time from RTC module, if present
-    // send request to receive data starting at register 0
-    const REG: [u8; 1] = [0];
-    let mut buf: [u8; 3] = [0, 0, 0];
-    i2c.write_read(RTC_ADDRESS, &REG, &mut buf)?;
-
-    let seconds = ((buf[0] & 0b11110000) >> 4) * 10 + (buf[0] & 0b00001111); // convert BCD to decimal
-    let minutes = ((buf[1] & 0b11110000) >> 4) * 10 + (buf[1] & 0b00001111); // convert BCD to decimal
-    let hours = ((buf[2] & 0b00110000) >> 4) * 10 + (buf[2] & 0b00001111); // convert BCD to decimal (assume 24 hour mode)
-
-    Ok((seconds, minutes, hours))
-}
 
 struct Leds {
     d10: port::Pin<port::mode::Output, port::PB2>,
@@ -486,7 +454,7 @@ fn main() -> ! {
     );
 
     // Check if RTC is available, and use it to set the time if so.
-    let ext_rtc = match rtc_get_time(&mut i2c) {
+    let ext_rtc = match ds3231::rtc_get_time(&mut i2c) {
         Ok(v) => {
             (sec_now, min_now, hr_now) = v;
             vcr_mode = false;
@@ -806,7 +774,7 @@ fn main() -> ! {
                         // If we were in any of these modes, let's now return us to normalcy.
                         // IF we are exiting time-setting mode, save the time to the RTC, if present:
                         if setting_time != SettingTime::No && ext_rtc {
-                            rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
+                            ds3231::rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
                             leds.all_off(); // Blink LEDs off to indicate saving time
                             arduino_hal::delay_ms(100);
                         }
@@ -851,7 +819,7 @@ fn main() -> ! {
                 // Do not check RTC time, if we are in time-setting mode.
                 if (setting_time == SettingTime::No) && ext_rtc {
                     // Check value at RTC ONCE PER MINUTE, if enabled.
-                    if let Ok((seconds, minutes, hours)) = rtc_get_time(&mut i2c) {
+                    if let Ok((seconds, minutes, hours)) = ds3231::rtc_get_time(&mut i2c) {
                         // IF time is off by MORE than two seconds, then correct the displayed time.
                         // Otherwise, DO NOT update the time, it may be a sampling error rather than an
                         // actual offset.
@@ -1227,7 +1195,7 @@ fn main() -> ! {
                 .unwrap_infallible();
 
             if ext_rtc {
-                rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
+                ds3231::rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
             }
         }
     }
