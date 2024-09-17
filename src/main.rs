@@ -55,8 +55,9 @@ panic_serial::impl_panic_handler!(
 
 const TEMP_FADE: u8 = 63;
 
-fn delay_time(time: u8) {
-    for _ in 0..time {
+/// Introduce a delay of `cycles` cycles.  At 16MHz, each cycle is 0.0625µs.
+fn delay_time(cycles: u8) {
+    for _ in 0..cycles {
         avr_device::asm::nop();
     }
 }
