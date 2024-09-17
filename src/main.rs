@@ -647,19 +647,19 @@ fn main() -> ! {
         }
 
         (plus_last, minus_last, z_last) = (plus_copy, minus_copy, z_copy);
-        let millis_copy = millis();
 
-        // The next if statement detects and deals with the millis() rollover.
+        // The next block detects and deals with the millis() rollover.
         // This introduces an error of up to  1 s, about every 50 days.
         //
         // (If you have the standard quartz timebase, this will not dominate the inaccuracy.
         // If you have the optional RTC, this error will be corrected next time we read the
         // time from the RTC.)
-
+        let millis_copy = millis();
         if millis_copy < last_time {
             last_time = 0;
         }
         let time_delta_ms = millis_copy - last_time;
+        
         if time_delta_ms >= 1000 {
             last_time = last_time.wrapping_add(1000);
 
