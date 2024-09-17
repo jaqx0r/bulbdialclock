@@ -350,14 +350,20 @@ enum HoldMode {
 
 #[arduino_hal::entry]
 fn main() -> ! {
+    // Current HMS.
     let mut sec_now: u8 = 0;
     let mut min_now: u8 = 0;
     let mut hr_now: u8 = 0;
+
+    // Current HMS ring value (to fade from).
     let mut hr_disp: u8 = 0;
     let mut min_disp: u8 = 0;
     let mut sec_disp: u8 = 0;
 
+    // Copy of last millis() to detect counter wraparound.
     let mut last_time: u16 = 0;
+
+    // Time since a button has been held, in milliseconds (counted by loop passes).
     let mut time_since_button: u8 = 0;
 
     // Modes:
@@ -381,11 +387,12 @@ fn main() -> ! {
     let mut momentary_override_minus: bool = false;
     let mut momentary_override_z: bool = false;
 
-    // Initialised in normalTimeDisplay
+    // Next HMS ring value to fade to.  Initialised in normalTimeDisplay.
     let mut sec_next: u8 = 0;
     let mut min_next: u8 = 0;
     let mut hr_next: u8 = 0;
-    // Initialised at end of RefreshTime conditional
+    
+    // LED number to take high/low in each pass of the main loop. Initialised at end of `refresh_time` conditional.
     let mut hr_disp_hi: u8 = 0;
     let mut hr_next_hi: u8 = 0;
     let mut min_disp_hi: u8 = 0;
