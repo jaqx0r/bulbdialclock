@@ -32,14 +32,14 @@ along with this library.  If not, see <http://www.gnu.org/licenses/>.
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
+mod ds3231;
 mod settings;
 mod timer;
-mod ds3231;
 use crate::timer::*;
 use arduino_hal::{hal::port, prelude::*};
 use core::cmp::Ordering;
 
-#[cfg(feature="serial-sync")]
+#[cfg(feature = "serial-sync")]
 mod pc_sync;
 
 #[cfg(not(feature = "panic-serial"))]
@@ -144,7 +144,6 @@ impl Fades {
         }
     }
 }
-
 
 struct Leds {
     d10: port::Pin<port::mode::Output, port::PB2>,
@@ -391,7 +390,7 @@ fn main() -> ! {
     let mut sec_next: u8 = 0;
     let mut min_next: u8 = 0;
     let mut hr_next: u8 = 0;
-    
+
     // LED number to take high/low in each pass of the main loop. Initialised at end of `refresh_time` conditional.
     let mut hr_disp_hi: u8 = 0;
     let mut hr_next_hi: u8 = 0;
@@ -659,7 +658,7 @@ fn main() -> ! {
             last_time = 0;
         }
         let time_delta_ms = millis_copy - last_time;
-        
+
         if time_delta_ms >= 1000 {
             last_time = last_time.wrapping_add(1000);
 
