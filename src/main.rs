@@ -62,22 +62,101 @@ fn delay_time(cycles: u8) {
     }
 }
 
-const SEC_HI: [u8; 30] = [
-    2, 3, 4, 5, 6, 1, 3, 4, 5, 6, 1, 2, 4, 5, 6, 1, 2, 3, 5, 6, 1, 2, 3, 4, 6, 1, 2, 3, 4, 5,
-];
-const SEC_LO: [u8; 30] = [
-    1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6,
+/// Array of pin pairs to set as output hi/lo to activate a LED in the blue
+/// Seconds ring.  Pin numbering refers to the index in `Leds.take*`.
+// LED pin activation is a 6x6 matrix of column high and row low; with no
+// diagonal that gives 30 LEDs.  See page 1 of the schematic at
+// https://bcdn.evilmadscientist.com/source/beedyschem.pdf
+const SEC_PINS: [(u8, u8); 30] = [
+    (2, 1), // D21
+    (3, 1), // D31
+    (4, 1), // D41
+    (5, 1), // D51
+    (6, 1), // D61
+    (1, 2), // D12
+    (3, 2), // D32
+    (4, 2), // D42
+    (5, 2), // D52
+    (6, 2), // D62
+    (1, 3), // D13
+    (2, 3), // D23
+    (4, 3), // D43
+    (5, 3), // D53
+    (6, 3), // D63
+    (1, 4), // D14
+    (2, 4), // D24
+    (3, 4), // D34
+    (5, 4), // D54
+    (6, 4), // D64
+    (1, 5), // D15
+    (2, 5), // D25
+    (3, 5), // D35
+    (4, 5), // D45
+    (6, 5), // D65
+    (1, 6), // D16
+    (2, 6), // D26
+    (3, 6), // D36
+    (4, 6), // D46
+    (5, 6), // D56
 ];
 
-const MIN_HI: [u8; 30] = [
-    1, 7, 1, 8, 1, 9, 2, 7, 2, 8, 2, 9, 3, 7, 3, 8, 3, 9, 4, 7, 4, 8, 4, 9, 5, 7, 5, 8, 5, 9,
-];
-const MIN_LO: [u8; 30] = [
-    7, 1, 8, 1, 9, 1, 7, 2, 8, 2, 9, 2, 7, 3, 8, 3, 9, 3, 7, 4, 8, 4, 9, 4, 7, 5, 8, 5, 9, 5,
+/// Array of pin pairs to set as output hi/lo to activate a LED in the green
+/// Minutes ring.  Pin numbering refers to the index in `Leds.take*`.
+// LED pin activation is 2x5x3 matrices of column high and row low, giving 30
+// LEDs.  See page 2 of the schematic at
+// https://bcdn.evilmadscientist.com/source/beedyschem.pdf
+const MIN_PINS: [(u8, u8); 30] = [
+    (1, 7), // D17
+    (7, 1), // D71
+    (1, 8), // D18
+    (8, 1), // D81
+    (1, 9), // D19
+    (9, 1), // D91
+    (2, 7), // D27
+    (7, 2), // D72
+    (2, 8), // D28
+    (8, 2), // D82
+    (2, 9), // D29
+    (9, 2), // D92
+    (3, 7), // D37
+    (7, 3), // D73
+    (3, 8), // D38
+    (8, 3), // D83
+    (3, 9), // D39
+    (9, 3), // D93
+    (4, 7), // D47
+    (7, 4), // D74
+    (4, 8), // D48
+    (8, 4), // D84
+    (4, 9), // D49
+    (9, 4), // D94
+    (5, 7), // D57
+    (7, 5), // D75
+    (5, 8), // D58
+    (8, 5), // D85
+    (5, 9), // D59
+    (9, 5), // D95
 ];
 
-const HR_HI: [u8; 12] = [10, 1, 2, 10, 10, 6, 3, 10, 10, 4, 5, 10];
-const HR_LO: [u8; 12] = [1, 10, 10, 2, 6, 10, 10, 3, 4, 10, 10, 5];
+/// Array of pin pairs to set as output hi/lo to activate a LED in the red Hour
+/// ring.  Pin numbering refers to the index in `Leds.take*`.
+// LED pin activation is 2x6x1 arrays of column hi and row low, giving 12 LEDs.
+// See page 3 of the schematic at
+// https://bcdn.evilmadscientist.com/source/beedyschem.pdf
+const HR_PINS: [(u8, u8); 12] = [
+    (10, 1), // D101
+    (1, 10), // D110
+    (2, 10), // D210
+    (10, 2), // D102
+    (10, 6), // D106
+    (6, 10), // D610
+    (3, 10), // D310
+    (10, 3), // D103
+    (10, 4), // D104
+    (4, 10), // D410
+    (5, 10), // D510
+    (10, 5), // D105
+];
 
 #[must_use]
 fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8, u8, u8) {
@@ -391,19 +470,15 @@ fn main() -> ! {
     let mut min_next: u8 = 0;
     let mut hr_next: u8 = 0;
 
-    // LED number to take high/low in each pass of the main loop. Initialised at end of `refresh_time` conditional.
-    let mut hr_disp_hi: u8 = 0;
-    let mut hr_next_hi: u8 = 0;
-    let mut min_disp_hi: u8 = 0;
-    let mut min_next_hi: u8 = 0;
-    let mut sec_disp_hi: u8 = 0;
-    let mut sec_next_hi: u8 = 0;
-    let mut hr_disp_lo: u8 = 0;
-    let mut hr_next_lo: u8 = 0;
-    let mut min_disp_lo: u8 = 0;
-    let mut min_next_lo: u8 = 0;
-    let mut sec_disp_lo: u8 = 0;
-    let mut sec_next_lo: u8 = 0;
+    // Pin pair offset to take high/low in each pass of the main loop to activate LEDs
+    // for h/m/s current and next. Initialised at end of `refresh_time`
+    // conditional.
+    let mut hr_disp_offset: u8 = 0;
+    let mut hr_next_offset: u8 = 0;
+    let mut min_disp_offset: u8 = 0;
+    let mut min_next_offset: u8 = 0;
+    let mut sec_disp_offset: u8 = 0;
+    let mut sec_next_offset: u8 = 0;
 
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
@@ -988,7 +1063,7 @@ fn main() -> ! {
                     normal_time_display(sec_now, min_now, hr_now);
             }
 
-            let (
+            (
                 hr_disp_offset,
                 hr_next_offset,
                 min_disp_offset,
@@ -1007,30 +1082,6 @@ fn main() -> ! {
             } else {
                 (hr_disp, hr_next, min_disp, min_next, sec_disp, sec_next)
             };
-
-            // This Hour
-            hr_disp_hi = HR_HI[hr_disp_offset as usize];
-            hr_disp_lo = HR_LO[hr_disp_offset as usize];
-
-            // Next Hour
-            hr_next_hi = HR_HI[hr_next_offset as usize];
-            hr_next_lo = HR_LO[hr_next_offset as usize];
-
-            // This Min
-            min_disp_hi = MIN_HI[min_disp_offset as usize];
-            min_disp_lo = MIN_LO[min_disp_offset as usize];
-
-            // Next Min
-            min_next_hi = MIN_HI[min_next_offset as usize];
-            min_next_lo = MIN_LO[min_next_offset as usize];
-
-            // This Sec
-            sec_disp_hi = SEC_HI[sec_disp_offset as usize];
-            sec_disp_lo = SEC_LO[sec_disp_offset as usize];
-
-            // Next Sec
-            sec_next_hi = SEC_HI[sec_next_offset as usize];
-            sec_next_lo = SEC_LO[sec_next_offset as usize];
         }
 
         let mut fades = Fades {
@@ -1143,43 +1194,49 @@ fn main() -> ! {
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
         for _ in 0..128 {
             if hr_disp_delay > 0 {
-                leds.take_high(hr_disp_hi);
-                leds.take_low(hr_disp_lo);
+                let (hi, lo) = HR_PINS[hr_disp_offset as usize];
+                leds.take_high(hi);
+                leds.take_low(lo);
                 delay_time(hr_disp_delay);
                 leds.all_off();
             }
 
             if hr_next_delay > 0 {
-                leds.take_high(hr_next_hi);
-                leds.take_low(hr_next_lo);
+                let (hi, lo) = HR_PINS[hr_next_offset as usize];
+                leds.take_high(hi);
+                leds.take_low(lo);
                 delay_time(hr_next_delay);
                 leds.all_off();
             }
 
             if min_disp_delay > 0 {
-                leds.take_high(min_disp_hi);
-                leds.take_low(min_disp_lo);
+                let (hi, lo) = MIN_PINS[min_disp_offset as usize];
+                leds.take_high(hi);
+                leds.take_low(lo);
                 delay_time(min_disp_delay);
                 leds.all_off();
             }
 
             if min_next_delay > 0 {
-                leds.take_high(min_next_hi);
-                leds.take_low(min_next_lo);
+                let (hi, lo) = MIN_PINS[min_next_offset as usize];
+                leds.take_high(hi);
+                leds.take_low(lo);
                 delay_time(min_next_delay);
                 leds.all_off();
             }
 
             if sec_disp_delay > 0 {
-                leds.take_high(sec_disp_hi);
-                leds.take_low(sec_disp_lo);
+                let (hi, lo) = SEC_PINS[sec_disp_offset as usize];
+                leds.take_high(hi);
+                leds.take_low(lo);
                 delay_time(sec_disp_delay);
                 leds.all_off();
             }
 
             if sec_next_delay > 0 {
-                leds.take_high(sec_next_hi);
-                leds.take_low(sec_next_lo);
+                let (hi, lo) = SEC_PINS[sec_next_offset as usize];
+                leds.take_high(hi);
+                leds.take_low(lo);
                 delay_time(sec_next_delay);
                 leds.all_off();
             }
