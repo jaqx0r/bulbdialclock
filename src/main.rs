@@ -250,7 +250,7 @@ impl Leds {
             8 => self.d8.set_high(),
             9 => self.d3.set_high(),
             10 => self.d9.set_high(),
-            _ => (),
+            _ => panic!(),
         };
     }
 
@@ -266,7 +266,7 @@ impl Leds {
             8 => self.d8.set_low(),
             9 => self.d3.set_low(),
             10 => self.d9.set_low(),
-            _ => (),
+            _ => panic!(),
         };
     }
 
