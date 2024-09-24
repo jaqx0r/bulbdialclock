@@ -17,3 +17,8 @@ https://docs.arduino.cc/hacking/hardware/PinMapping168
 
 Arduino Time.h from https://github.com/michaelmargolis/arduino_time/blob/master/Time/
 
+https://wiki.evilmadscientist.com/Bulbdial is the home page for the Bulbdial Clock kit.
+
+https://www.evilmadscientist.com/2010/on-the-design-of-the-bulbdial-clock/ explains the schematics.
+
+https://en.wikipedia.org/wiki/Charlieplexing explains the technique used for lighting the LEDs.
