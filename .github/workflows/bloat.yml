@@ -17,6 +17,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@master
+      - run: sudo apt install avr-libc gcc-avr pkg-config avrdude libudev-dev build-essential
       - uses: orf/cargo-bloat-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
