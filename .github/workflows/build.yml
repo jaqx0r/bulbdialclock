@@ -1,4 +1,4 @@
-name: Rust
+name: build
 
 on:
   push:
@@ -19,5 +19,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - run sudo apt install avr-libc gcc-avr pkg-config avrdude libudev-dev build-essential
     - run: cargo build --verbose
     - run: cargo test --verbose
