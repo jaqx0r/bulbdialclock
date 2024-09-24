@@ -11,14 +11,12 @@ env:
 
 permissions:
   actions: none
-  
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
-    - run sudo apt install avr-libc gcc-avr pkg-config avrdude libudev-dev build-essential
+    - run: sudo apt install avr-libc gcc-avr pkg-config avrdude libudev-dev build-essential
     - run: cargo build --verbose
     - run: cargo test --verbose
