@@ -1,4 +1,6 @@
-on: # rebuild any PRs and main branch changes
+name: bloat
+
+on:
   pull_request:
   push:
     branches:
