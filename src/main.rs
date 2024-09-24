@@ -718,15 +718,7 @@ fn main() -> ! {
                     if time_since_button == 10
                         && settings.last_saved_brightness != settings.main_bright
                     {
-                        settings.last_saved_brightness = settings::eeprom_save_settings(
-                            &mut ep,
-                            settings.main_bright,
-                            settings.hr_bright,
-                            settings.min_bright,
-                            settings.sec_bright,
-                            settings.ccw,
-                            settings.fade_mode,
-                        );
+                        settings.save(&mut ep);
                     }
                     HoldMode::None
                 }
@@ -768,15 +760,7 @@ fn main() -> ! {
                     // Hold + and - for 3 s AT POWER ON to restore factory settings.
                     if !factory_reset_disable {
                         settings = Settings::default();
-                        settings.last_saved_brightness = settings::eeprom_save_settings(
-                            &mut ep,
-                            settings.main_bright,
-                            settings.hr_bright,
-                            settings.min_bright,
-                            settings.sec_bright,
-                            settings.ccw,
-                            settings.fade_mode,
-                        );
+                        settings.save(&mut ep);
                         leds.all_off(); // Blink LEDs off to indicate restoring data
                         arduino_hal::delay_ms(100);
                     } else if align_mode != AlignMode::No {
@@ -797,15 +781,7 @@ fn main() -> ! {
                     if option_mode != OptionMode::No {
                         option_mode = OptionMode::No;
                         // Save options if exiting option mode!
-                        settings.last_saved_brightness = settings::eeprom_save_settings(
-                            &mut ep,
-                            settings.main_bright,
-                            settings.hr_bright,
-                            settings.min_bright,
-                            settings.sec_bright,
-                            settings.ccw,
-                            settings.fade_mode,
-                        );
+                        settings.save(&mut ep);
                         leds.all_off(); // Blink LEDs off to indicate saving data
                         arduino_hal::delay_ms(100);
                     } else {
@@ -831,15 +807,7 @@ fn main() -> ! {
 
                         if option_mode != OptionMode::No {
                             // Save options if exiting option mode!
-                            settings.last_saved_brightness = settings::eeprom_save_settings(
-                                &mut ep,
-                                settings.main_bright,
-                                settings.hr_bright,
-                                settings.min_bright,
-                                settings.sec_bright,
-                                settings.ccw,
-                                settings.fade_mode,
-                            );
+                            settings.save(&mut ep);
                             leds.all_off(); // Blink LEDs off to indicate saving data
                             arduino_hal::delay_ms(100);
                         }

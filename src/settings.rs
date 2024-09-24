@@ -102,6 +102,14 @@ impl Settings {
             last_saved_brightness: main_bright,
         }
     }
+
+    /// Save the settings to `eeprom` and return the `main_bright` value.
+    ///
+    /// EEPROM has a limited number of write cycles in its life.  Use this function
+    /// sparingly -- good for human operated buttons, not so good for automation.
+    pub fn save(&mut self, eeprom: &mut arduino_hal::Eeprom) {
+        self.last_saved_brightness = eeprom_save_settings(eeprom, self.main_bright, self.hr_bright, self.min_bright, self.sec_bright, self.ccw, self.fade_mode);
+    }
 }
 
 /// Save the settings to EEPROM, and return the `main_bright` value.
