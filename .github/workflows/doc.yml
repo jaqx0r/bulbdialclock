@@ -23,6 +23,11 @@ jobs:
           path: target/avr-atmega168/doc
 
   deploy:
+    permissions:
+      # to deploy to Pages
+      pages: write
+      # to verify the deployment originates from an appropriate source
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
