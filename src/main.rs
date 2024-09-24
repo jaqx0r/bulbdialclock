@@ -282,6 +282,13 @@ impl Leds {
         self.d3.set_low();
         self.d9.set_low();
     }
+
+    fn activate(&mut self, hi: u8, lo: u8, delay: u8) {
+        self.take_high(hi);
+        self.take_low(lo);
+        delay_time(delay);
+        self.all_off();
+    }
 }
 
 const START_OPT_TIME_LIMIT: u8 = 30;
@@ -1195,50 +1202,32 @@ fn main() -> ! {
         for _ in 0..128 {
             if hr_disp_delay > 0 {
                 let (hi, lo) = HR_PINS[hr_disp_offset as usize];
-                leds.take_high(hi);
-                leds.take_low(lo);
-                delay_time(hr_disp_delay);
-                leds.all_off();
+                leds.activate(hi, lo, hr_disp_delay);
             }
 
             if hr_next_delay > 0 {
                 let (hi, lo) = HR_PINS[hr_next_offset as usize];
-                leds.take_high(hi);
-                leds.take_low(lo);
-                delay_time(hr_next_delay);
-                leds.all_off();
+                leds.activate(hi, lo, hr_next_delay);
             }
 
             if min_disp_delay > 0 {
                 let (hi, lo) = MIN_PINS[min_disp_offset as usize];
-                leds.take_high(hi);
-                leds.take_low(lo);
-                delay_time(min_disp_delay);
-                leds.all_off();
+                leds.activate(hi, lo, min_disp_delay);
             }
 
             if min_next_delay > 0 {
                 let (hi, lo) = MIN_PINS[min_next_offset as usize];
-                leds.take_high(hi);
-                leds.take_low(lo);
-                delay_time(min_next_delay);
-                leds.all_off();
+                leds.activate(hi, lo, min_next_delay);
             }
 
             if sec_disp_delay > 0 {
                 let (hi, lo) = SEC_PINS[sec_disp_offset as usize];
-                leds.take_high(hi);
-                leds.take_low(lo);
-                delay_time(sec_disp_delay);
-                leds.all_off();
+                leds.activate(hi, lo, sec_disp_delay);
             }
 
             if sec_next_delay > 0 {
                 let (hi, lo) = SEC_PINS[sec_next_offset as usize];
-                leds.take_high(hi);
-                leds.take_low(lo);
-                delay_time(sec_next_delay);
-                leds.all_off();
+                leds.activate(hi, lo, sec_next_delay);
             }
 
             if settings.main_bright < 8 {
