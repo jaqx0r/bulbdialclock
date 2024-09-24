@@ -225,69 +225,31 @@ impl Fades {
 }
 
 struct Leds {
-    d10: port::Pin<port::mode::Output, port::PB2>,
-    a0: port::Pin<port::mode::Output, port::PC0>,
-    a1: port::Pin<port::mode::Output, port::PC1>,
-    a2: port::Pin<port::mode::Output, port::PC2>,
-    a3: port::Pin<port::mode::Output, port::PC3>,
-    d4: port::Pin<port::mode::Output, port::PD4>,
-    d2: port::Pin<port::mode::Output, port::PD2>,
-    d8: port::Pin<port::mode::Output, port::PB0>,
-    d3: port::Pin<port::mode::Output, port::PD3>,
-    d9: port::Pin<port::mode::Output, port::PB1>,
+    pins: [port::Pin<port::mode::Input<port::mode::Floating>, port::Dynamic>; 10],
 }
 
 impl Leds {
-    fn take_high(&mut self, led: u8) {
-        match led {
-            1 => self.d10.set_high(),
-            2 => self.a0.set_high(),
-            3 => self.a1.set_high(),
-            4 => self.a2.set_high(),
-            5 => self.a3.set_high(),
-            6 => self.d4.set_high(),
-            7 => self.d2.set_high(),
-            8 => self.d8.set_high(),
-            9 => self.d3.set_high(),
-            10 => self.d9.set_high(),
-            _ => panic!(),
-        };
-    }
-
-    fn take_low(&mut self, led: u8) {
-        match led {
-            1 => self.d10.set_low(),
-            2 => self.a0.set_low(),
-            3 => self.a1.set_low(),
-            4 => self.a2.set_low(),
-            5 => self.a3.set_low(),
-            6 => self.d4.set_low(),
-            7 => self.d2.set_low(),
-            8 => self.d8.set_low(),
-            9 => self.d3.set_low(),
-            10 => self.d9.set_low(),
-            _ => panic!(),
-        };
+    /// Activate a LED given a pin pair in the charlieplexed array.  See the
+    /// bulbdial schematic
+    /// <https://bcdn.evilmadscientist.com/source/beedyschem.pdf> and refer to
+    /// the Evil Mad Scientist article on the design of the Bulbdial clock for
+    /// more details on charlieplexing:
+    /// <https://www.evilmadscientist.com/2010/on-the-design-of-the-bulbdial-clock/>
+    /// Per that documentation and the C source code we know that the high
+    /// impedance (hi Z) pin mode is performed by setting the pin into input
+    /// mode.
+    fn activate(&mut self, hi: u8, lo: u8, delay: u8) {
+        let hi_off = hi.wrapping_sub(1) as usize;
+        let lo_off = lo.wrapping_sub(1) as usize;
+        let hi_pin = unsafe { core::ptr::read(&self.pins[hi_off]) }.into_output_high();
+        let lo_pin = unsafe { core::ptr::read(&self.pins[lo_off]) }.into_output();
+        delay_time(delay);
+        self.pins[hi_off] = hi_pin.into_floating_input();
+        self.pins[lo_off] = lo_pin.into_floating_input();
     }
 
     fn all_off(&mut self) {
-        self.d10.set_low();
-        self.a0.set_low();
-        self.a1.set_low();
-        self.a2.set_low();
-        self.a3.set_low();
-        self.d4.set_low();
-        self.d2.set_low();
-        self.d8.set_low();
-        self.d3.set_low();
-        self.d9.set_low();
-    }
-
-    fn activate(&mut self, hi: u8, lo: u8, delay: u8) {
-        self.take_high(hi);
-        self.take_low(lo);
-        delay_time(delay);
-        self.all_off();
+        // all off by default, kept for backwards compatibility in the option setting modes.
     }
 }
 
@@ -510,16 +472,18 @@ fn main() -> ! {
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
     let mut leds = Leds {
-        d10: pins.d10.into_output(), // 1 - PB2
-        a0: pins.a0.into_output(),   // 2 - PC0
-        a1: pins.a1.into_output(),   // 3 - PC1
-        a2: pins.a2.into_output(),   // 4 - PC2
-        a3: pins.a3.into_output(),   // 5 - PC3
-        d4: pins.d4.into_output(),   // 6 - PD4
-        d2: pins.d2.into_output(),   // 7 - PD2
-        d8: pins.d8.into_output(),   // 8 - PB0
-        d3: pins.d3.into_output(),   // 9 - PD3
-        d9: pins.d9.into_output(),   // 10 - PB1
+        pins: [
+            pins.d10.downgrade(), // 1 - PB2
+            pins.a0.downgrade(),  // 2 - PC0
+            pins.a1.downgrade(),  // 3 - PC1
+            pins.a2.downgrade(),  // 4 - PC2
+            pins.a3.downgrade(),  // 5 - PC3
+            pins.d4.downgrade(),  // 6 - PD4
+            pins.d2.downgrade(),  // 7 - PD2
+            pins.d8.downgrade(),  // 8 - PB0
+            pins.d3.downgrade(),  // 9 - PD3
+            pins.d9.downgrade(),  // 10 - PB1
+        ],
     };
 
     // Pull-up resistors for buttons
