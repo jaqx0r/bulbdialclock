@@ -108,30 +108,12 @@ impl Settings {
     /// EEPROM has a limited number of write cycles in its life.  Use this function
     /// sparingly -- good for human operated buttons, not so good for automation.
     pub fn save(&mut self, eeprom: &mut arduino_hal::Eeprom) {
-        self.last_saved_brightness = eeprom_save_settings(eeprom, self.main_bright, self.hr_bright, self.min_bright, self.sec_bright, self.ccw, self.fade_mode);
+        eeprom.write_byte(0, self.main_bright);
+        eeprom.write_byte(1, self.hr_bright);
+        eeprom.write_byte(2, self.min_bright);
+        eeprom.write_byte(3, self.sec_bright);
+        eeprom.write_byte(4, if self.ccw { 1 } else { 0 });
+        eeprom.write_byte(5, if self.fade_mode { 1 } else { 0 });
+        self.last_saved_brightness = self.main_bright;
     }
-}
-
-/// Save the settings to EEPROM, and return the `main_bright` value.
-///
-/// EEPROM has a limited number of write cycles in its life.  Use this function
-/// sparingly -- good for human operated buttons, not so good for automation.
-#[must_use]
-pub fn eeprom_save_settings(
-    eeprom: &mut arduino_hal::Eeprom,
-    main_bright: u8,
-    hour_bright: u8,
-    min_bright: u8,
-    sec_bright: u8,
-    ccw: bool,
-    fade_mode: bool,
-) -> u8 {
-    eeprom.write_byte(0, main_bright);
-    eeprom.write_byte(1, hour_bright);
-    eeprom.write_byte(2, min_bright);
-    eeprom.write_byte(3, sec_bright);
-    eeprom.write_byte(4, if ccw { 1 } else { 0 });
-    eeprom.write_byte(5, if fade_mode { 1 } else { 0 });
-
-    main_bright
 }
