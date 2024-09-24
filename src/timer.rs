@@ -1,13 +1,13 @@
-/// A basic implementation of the `millis()` function from Arduino.
-///
-/// https://www.arduino.cc/reference/en/language/functions/time/millis/
-///
-/// Uses timer TC0 and one of its interrupts to update a global millisecond
-/// counter.  A walkthough of this code is available here:
-///
-/// Based on https://blog.rahix.de/005-avr-hal-millis/
-///
-/// License assumed to be MIT based on https://github.com/Rahix/avr-hal/blob/main/examples/arduino-uno/src/bin/uno-millis.rsm
+// License assumed to be MIT based on https://github.com/Rahix/avr-hal/blob/main/examples/arduino-uno/src/bin/uno-millis.rsm
+//! A basic implementation of the `millis()` function from Arduino.
+//!
+//! <https://www.arduino.cc/reference/en/language/functions/time/millis/>
+//!
+//! Uses timer TC0 and one of its interrupts to update a global millisecond
+//! counter.  A walkthough of this code is available here:
+//!
+//! Based on <https://blog.rahix.de/005-avr-hal-millis/>
+
 use avr_device::interrupt::Mutex;
 use core::cell;
 
@@ -39,15 +39,15 @@ fn TIMER0_COMPA() {
     })
 }
 
-/// Return the number of milliseconds counted since `init_tc0()` has been called.
+/// Return the number of milliseconds counted since [`init_tc0()`] has been called.
 pub fn millis() -> u16 {
     avr_device::interrupt::free(|cs| MILLIS_COUNTER.borrow(cs).get())
 }
 
 /// Initialise Timer/Counter 0 for counting milliseconds.
 /// Configures the TC0 timer for the interval defined by consts PRESCALER and TIMER_COUNTS (in CTC mode).
-// https://blog.rahix.de/005-avr-hal-millis/
-// More explanation on the atmega168 timer at https://protostack.com.au/2010/09/timer-interrupts-on-an-atmega168/
+// <https://blog.rahix.de/005-avr-hal-millis/>
+// More explanation on the atmega168 timer at <https://protostack.com.au/2010/09/timer-interrupts-on-an-atmega168/>
 pub fn init_tc0(tc0: arduino_hal::pac::TC0) {
     // Set overflow behaviour of the timer in TCCR0A to Clear Timer on Compare mode.
     // Use TIMER0_COMPA interrupt as a result.

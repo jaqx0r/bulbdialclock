@@ -1,26 +1,23 @@
-/*!
-DS3231 RTC interface
-
-This library is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this library.  If not, see <http://www.gnu.org/licenses/>.
-
- */
+// This library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this library.  If not, see <http://www.gnu.org/licenses/>.
+//! DS3231 RTC interface
 
 use arduino_hal::prelude::*;
 
 // 104 is the DS3231 RTC device address
 const RTC_ADDRESS: u8 = 104;
 
+/// Set the time on the onboard DS3231.
 pub fn rtc_set_time(i2c: &mut arduino_hal::I2c, hour_in: u8, minute_in: u8, second_in: u8) {
     macro_rules! bcd_encode {
         ($v:expr) => {{
@@ -37,6 +34,7 @@ pub fn rtc_set_time(i2c: &mut arduino_hal::I2c, hour_in: u8, minute_in: u8, seco
     i2c.write(RTC_ADDRESS, &buf).unwrap(); // TODO handle result.
 }
 
+/// Get the time from the onboard DS3231.
 pub fn rtc_get_time(i2c: &mut arduino_hal::I2c) -> Result<(u8, u8, u8), arduino_hal::i2c::Error> {
     // Read out time from RTC module, if present
     // send request to receive data starting at register 0
