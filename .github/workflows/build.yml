@@ -18,5 +18,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - run: sudo apt install avr-libc gcc-avr pkg-config avrdude libudev-dev build-essential
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
     - run: cargo build --verbose
     - run: cargo test --verbose
