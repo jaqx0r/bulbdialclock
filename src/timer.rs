@@ -3,10 +3,12 @@
 //!
 //! <https://www.arduino.cc/reference/en/language/functions/time/millis/>
 //!
-//! Uses timer TC0 and one of its interrupts to update a global millisecond
-//! counter.  A walkthough of this code is available here:
+//! Uses timer `TC0` and one of its interrupts to update a global millisecond
+//! counter.  A walkthough of this code is available at
+//! <https://blog.rahix.de/005-avr-hal-millis/>
 //!
-//! Based on <https://blog.rahix.de/005-avr-hal-millis/>
+//! A deep dive into the ATmega168 timer can be found at
+//! <https://protostack.com.au/2010/09/timer-interrupts-on-an-atmega168/>
 
 use avr_device::interrupt::Mutex;
 use core::cell;
@@ -22,7 +24,9 @@ use core::cell;
 // ║      1024 ║          125 ║              8 ms ║
 // ║      1024 ║          250 ║             16 ms ║
 // ╚═══════════╩══════════════╩═══════════════════╝
+/// Prescaler divider to slow down the tick rate.
 const PRESCALER: u32 = 1024;
+/// Represents the overflow maximum for Clear Timer on Compare mode.
 const TIMER_COUNTS: u32 = 125;
 
 const MILLIS_INCREMENT: u16 = (PRESCALER * TIMER_COUNTS / 16000) as _;
@@ -44,32 +48,36 @@ pub fn millis() -> u16 {
     avr_device::interrupt::free(|cs| MILLIS_COUNTER.borrow(cs).get())
 }
 
-/// Initialise Timer/Counter 0 for counting milliseconds.
-/// Configures the TC0 timer for the interval defined by consts PRESCALER and TIMER_COUNTS (in CTC mode).
-// <https://blog.rahix.de/005-avr-hal-millis/>
-// More explanation on the atmega168 timer at <https://protostack.com.au/2010/09/timer-interrupts-on-an-atmega168/>
+/// Initialise Timer/Counter 0 for counting milliseconds.  Configures the `TC0`
+/// timer for the interval defined by consts [`PRESCALER`] and [`TIMER_COUNTS`]
+/// (in Clear Timer on Compare mode).
 pub fn init_tc0(tc0: arduino_hal::pac::TC0) {
-    // Set overflow behaviour of the timer in TCCR0A to Clear Timer on Compare mode.
-    // Use TIMER0_COMPA interrupt as a result.
-    tc0.tccr0a.write(|w| w.wgm0().ctc());
-
-    // Set the overflow maximum for CTC mode in OCR0A.
-    tc0.ocr0a.write(|w| w.bits(TIMER_COUNTS as u8));
-
-    // Configure prescaling in TCCR0B.  Arduino chooses 64, here support more options.
+    // Configure prescaling in `TCCR0B`.  Arduino chooses 64 by default, here
+    // we support more options.  This sets the tick rate from the system clock.
     tc0.tccr0b.write(|w| match PRESCALER {
-        1 => w.cs0().direct(),
-        8 => w.cs0().prescale_8(),
-        64 => w.cs0().prescale_64(),
-        256 => w.cs0().prescale_256(),
-        1024 => w.cs0().prescale_1024(),
+        1 => w.cs0().direct(), // 16MHz, no prescaling
+        8 => w.cs0().prescale_8(), // 16MHz/8
+        64 => w.cs0().prescale_64(),  // 16MHz/64
+        256 => w.cs0().prescale_256(), // 16MHz/256
+        1024 => w.cs0().prescale_1024(), // 16MHz/1024
         _ => panic!(),
     });
 
-    // Enable overflow interrupt in TIMSK0.  From this point on when the timer overflows and interrupts are enabled, the ISR will run.
+    // Set the overflow maximum for CTC mode in output compare register
+    // `OCR0A`, so that the ISR is triggered when the `TC0`'s tick counter
+    // reaches this value.
+    tc0.ocr0a.write(|w| w.bits(TIMER_COUNTS as u8));
+
+    // Set overflow behaviour of the timer in `TCCR0A` to Clear Timer on
+    // Compare mode.  Issues [`TIMER0_COMPA`] interrupt on overflow, and resets
+    // the tick counter when it reaches `OCR0A`'s value.
+    tc0.tccr0a.write(|w| w.wgm0().ctc());
+
+    // Enable the [`TIMER0_COMPA`] overflow interrupt in `TIMSK0`.  From this point on when the timer
+    // overflows and interrupts are enabled, the ISR will run.
     tc0.timsk0.write(|w| w.ocie0a().set_bit());
 
-    // Reset the counter.
+    // Reset the global millisecond counter.
     avr_device::interrupt::free(|cs| {
         MILLIS_COUNTER.borrow(cs).set(0);
     });
