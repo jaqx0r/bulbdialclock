@@ -236,6 +236,7 @@ impl Leds {
     fn activate(&mut self, hi: u8, lo: u8, delay: u8) {
         let hi_off = hi.wrapping_sub(1) as usize;
         let lo_off = lo.wrapping_sub(1) as usize;
+        // # SAFETY: We put it right back afterwards.
         let hi_pin = unsafe { core::ptr::read(&self.pins[hi_off]) }.into_output_high();
         let lo_pin = unsafe { core::ptr::read(&self.pins[lo_off]) }.into_output();
         delay_time(delay);
