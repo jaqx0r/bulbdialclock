@@ -18,7 +18,6 @@ jobs:
       - run: cargo doc --no-deps
       - name: add redirect
         run: echo '<meta http-equiv="refresh" content="0;url=aoc/index.html">' > target/avr-atmega168/doc/index.html
-      - run: rm target/doc/.lock
       - uses: actions/upload-pages-artifact@v3
         with:
           path: target/doc
