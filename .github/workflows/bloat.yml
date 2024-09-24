@@ -1,0 +1,24 @@
+name: bloat
+
+on: # rebuild any PRs and main branch changes
+  pull_request:
+  push:
+    branches:
+      - master
+
+name: bloat
+
+permissions:
+  actions: none
+
+jobs:
+  cargo_bloat:
+    runs-on: ubuntu-latest
+    permissions:
+      # publish bloat results as a comment
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@master
+      - uses: orf/cargo-bloat-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
