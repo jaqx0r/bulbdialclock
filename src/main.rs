@@ -29,6 +29,7 @@
 
 mod ds3231;
 mod settings;
+use crate::settings::Settings;
 mod timer;
 use crate::timer::*;
 use arduino_hal::{hal::port, prelude::*};
@@ -490,7 +491,7 @@ fn main() -> ! {
     );
 
     let mut ep = arduino_hal::Eeprom::new(dp.EEPROM);
-    let mut settings = settings::eeprom_read_settings(&ep);
+    let mut settings = Settings::new(&ep);
 
     // Pull up inputs are HIGH when open, and LOW when pressed.
     let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
@@ -766,7 +767,7 @@ fn main() -> ! {
 
                     // Hold + and - for 3 s AT POWER ON to restore factory settings.
                     if !factory_reset_disable {
-                        settings = settings::Settings::default();
+                        settings = Settings::default();
                         settings.last_saved_brightness = settings::eeprom_save_settings(
                             &mut ep,
                             settings.main_bright,

@@ -64,40 +64,43 @@ impl Default for Settings {
     }
 }
 
-/// Read the EEPROM into settings, or return a default if an error occurs during read.
-#[must_use]
-pub fn eeprom_read_settings(eeprom: &arduino_hal::Eeprom) -> Settings {
-    let mut vals: [u8; 7] = [255; 7];
-    if eeprom.read(0, &mut vals).is_err() {
-        return Settings::default();
-    }
-    let main_bright = match vals[0] {
-        v @ 1..=MAIN_BRIGHT_DEFAULT => v,
-        _ => MAIN_BRIGHT_DEFAULT,
-    };
-    Settings {
-        main_bright,
-        hr_bright: match vals[1] {
-            v @ 0..=RED_BRIGHT_DEFAULT => v,
-            _ => RED_BRIGHT_DEFAULT,
-        },
-        min_bright: match vals[2] {
-            v @ 0..=GREEN_BRIGHT_DEFAULT => v,
-            _ => GREEN_BRIGHT_DEFAULT,
-        },
-        sec_bright: match vals[3] {
-            v @ 0..=BLUE_BRIGHT_DEFAULT => v,
-            _ => BLUE_BRIGHT_DEFAULT,
-        },
-        ccw: match vals[4] {
-            v @ 0..=1 => v == 1,
-            _ => CCW_DEFAULT,
-        },
-        fade_mode: match vals[5] {
-            v @ 0..=1 => v == 1,
-            _ => FADE_MODE_DEFAULT,
-        },
-        last_saved_brightness: main_bright,
+impl Settings {
+    /// Constructs a new Settings from the values stored in `eeprom`, or
+    /// defaults if an error occurs during a read.
+    #[must_use]
+    pub fn new(eeprom: &arduino_hal::Eeprom) -> Self {
+        let mut vals: [u8; 7] = [255; 7];
+        if eeprom.read(0, &mut vals).is_err() {
+            return Settings::default();
+        }
+        let main_bright = match vals[0] {
+            v @ 1..=MAIN_BRIGHT_DEFAULT => v,
+            _ => MAIN_BRIGHT_DEFAULT,
+        };
+        Settings {
+            main_bright,
+            hr_bright: match vals[1] {
+                v @ 0..=RED_BRIGHT_DEFAULT => v,
+                _ => RED_BRIGHT_DEFAULT,
+            },
+            min_bright: match vals[2] {
+                v @ 0..=GREEN_BRIGHT_DEFAULT => v,
+                _ => GREEN_BRIGHT_DEFAULT,
+            },
+            sec_bright: match vals[3] {
+                v @ 0..=BLUE_BRIGHT_DEFAULT => v,
+                _ => BLUE_BRIGHT_DEFAULT,
+            },
+            ccw: match vals[4] {
+                v @ 0..=1 => v == 1,
+                _ => CCW_DEFAULT,
+            },
+            fade_mode: match vals[5] {
+                v @ 0..=1 => v == 1,
+                _ => FADE_MODE_DEFAULT,
+            },
+            last_saved_brightness: main_bright,
+        }
     }
 }
 
