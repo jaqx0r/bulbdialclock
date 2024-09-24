@@ -28,7 +28,10 @@ the Dangerous Way](https://cliffle.com/p/dangerust/1/), and of course `Rahix`
 for the [`avr-hal`](https://github.com/Rahix/avr-hal/) crate.
 
 `millis()` in rtc.rs from https://blog.rahix.de/005-avr-hal-millis/ .
-Crossreferencing `millis()` with Arduino Time.h from https://github.com/michaelmargolis/arduino_time/blob/master/Time/ to make sure I understood what was happening and which methods from the original I could discard.
+Crossreferencing `millis()` with Arduino Time.h from
+https://github.com/michaelmargolis/arduino_time/blob/master/Time/ to make sure
+I understood what was happening and which methods from the original I could
+discard.
 
 
 For conversion of the LED manipulation code,
