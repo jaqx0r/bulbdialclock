@@ -116,4 +116,9 @@ impl Settings {
         eeprom.write_byte(5, if self.fade_mode { 1 } else { 0 });
         self.last_saved_brightness = self.main_bright;
     }
+
+    /// Indicate if the settings have been changed since last save.
+    pub fn has_changed_since_last_save(&self) -> bool {
+        self.last_saved_brightness != self.main_bright
+    }
 }

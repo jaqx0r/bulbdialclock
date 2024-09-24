@@ -715,9 +715,7 @@ fn main() -> ! {
                         time_since_button = time_since_button.wrapping_add(1);
                     }
                     // 10 s after last button released...
-                    if time_since_button == 10
-                        && settings.last_saved_brightness != settings.main_bright
-                    {
+                    if time_since_button == 10 && settings.has_changed_since_last_save() {
                         settings.save(&mut ep);
                     }
                     HoldMode::None
