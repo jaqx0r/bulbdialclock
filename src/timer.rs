@@ -29,11 +29,15 @@ const PRESCALER: u32 = 1024;
 /// Represents the overflow maximum for Clear Timer on Compare mode.
 const TIMER_COUNTS: u32 = 125;
 
+/// How much to increment the millisecond counter by, each overflow interrupt.
 const MILLIS_INCREMENT: u16 = (PRESCALER * TIMER_COUNTS / 16000) as _;
 
+// Stores the global millisecond counter.
 static MILLIS_COUNTER: Mutex<cell::Cell<u16>> = Mutex::new(cell::Cell::new(0));
 
 /// Timer/Counter 0 Compare Match A interrupt service routine.
+///
+/// Users must enable `#[feature(abi_avr_interrupt)]` in main.
 #[avr_device::interrupt(atmega168)]
 fn TIMER0_COMPA() {
     avr_device::interrupt::free(|cs| {
@@ -48,9 +52,10 @@ pub fn millis() -> u16 {
     avr_device::interrupt::free(|cs| MILLIS_COUNTER.borrow(cs).get())
 }
 
-/// Initialise Timer/Counter 0 for counting milliseconds.  Configures the `TC0`
-/// timer for the interval defined by consts [`PRESCALER`] and [`TIMER_COUNTS`]
-/// (in Clear Timer on Compare mode).
+/// Initialise Timer/Counter 0 for counting milliseconds.
+///
+/// Configures the `TC0` timer for the interval defined by consts [`PRESCALER`]
+/// and [`TIMER_COUNTS`] (in Clear Timer on Compare mode).
 pub fn init_tc0(tc0: arduino_hal::pac::TC0) {
     // Configure prescaling in `TCCR0B`.  Arduino chooses 64 by default, here
     // we support more options.  This sets the tick rate from the system clock.
