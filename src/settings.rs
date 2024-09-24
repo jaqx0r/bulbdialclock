@@ -10,9 +10,13 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this library.  If not, see <http://www.gnu.org/licenses/>.
-//! EEPROM settings
+//! EEPROM settings.
+//!
+//! Clock display state is stored to the onboard EEPROM when setting mode is
+//! complete, and read back at startup.
 
-/// EEPROM variables that are saved:  7
+/// Saved clock settings state, restored at boot.
+// EEPROM variables that are saved:  7
 pub struct Settings {
     /// Brightness setting (range: 1-8)  Default: 8   (Fully bright)
     pub main_bright: u8,
@@ -97,6 +101,10 @@ pub fn eeprom_read_settings(eeprom: &arduino_hal::Eeprom) -> Settings {
     }
 }
 
+/// Save the settings to EEPROM, and return the `main_bright` value.
+///
+/// EEPROM has a limited number of write cycles in its life.  Use this function
+/// sparingly -- good for human operated buttons, not so good for automation.
 #[must_use]
 pub fn eeprom_save_settings(
     eeprom: &mut arduino_hal::Eeprom,
@@ -107,9 +115,6 @@ pub fn eeprom_save_settings(
     ccw: bool,
     fade_mode: bool,
 ) -> u8 {
-    // Careful if you use  this function: EEPROM has a limited number of write
-    // cycles in its life.  Good for human-operated buttons, bad for automation.
-
     eeprom.write_byte(0, main_bright);
     eeprom.write_byte(1, hour_bright);
     eeprom.write_byte(2, min_bright);
