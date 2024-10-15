@@ -19,9 +19,15 @@ schematics, and design prose.  Definitely read the article
 https://www.evilmadscientist.com/2010/on-the-design-of-the-bulbdial-clock/ to
 understand this device and re-read the section on Charlieplexing.
 
+Crossreferencing the original code and the Arduino library code with the
+[ATmega168 Datasheet
+(PDF)](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-9365-Automotive-Microcontrollers-ATmega88-ATmega168_Datasheet.pdf)
+also helped orient myself with the code and schematics.
+
 For type conversion from the Arduino C to Rust integers, I used
 https://learn.sparkfun.com/tutorials/data-types-in-arduino/all which indicates
 the size and signedness of Arduino C types.
+
 
 Thanks to the Embedded Rust book, the regular Rust book, [Cliffle's Learn Rust
 the Dangerous Way](https://cliffle.com/p/dangerust/1/), and of course `Rahix`
