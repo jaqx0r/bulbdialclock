@@ -42,9 +42,11 @@ until quite late in the game. https://en.wikipedia.org/wiki/Charlieplexing
 explains the technique used for lighting the LEDs.
 
 I cared deeply about binary size because the device has only 16k of storage,
-and using `panic-serial` used up most of this.  Debugging this without `panic-serial` is difficult
-difficult, but I managed with merely `ufmt::uwriteln!` in the right places in
-the end.
+and using `panic-serial` used up most of this.  Debugging this without
+`panic-serial` is difficult difficult, but I managed with merely
+`ufmt::uwriteln!` in the right places in the end.  TODO: Check out the hints in
+https://jamesmunns.com/blog/fmt-unreasonably-expensive/ and compare with the
+current state of the world.
 
 I managed to squeeze bytes out by using the `let match` forms and changing mode
 varibles into `enum`s, which was very satisfying, and helped refactor the code
@@ -52,3 +54,10 @@ into something I could understand :D I could get more out by using the explicit
 `wrapped_*` arithmetic instead of leaving the bounds-checking default in the
 `dev` build.
 
+TODO:
+
+ - There's a flash at the start of each second so I think there is an integer
+   arithmetic error in the fade calculation.
+ - Buttons haven't been tested yet.  The whole button handling code looks like
+   it wants further refactoring, into a single state enum.
+ 
