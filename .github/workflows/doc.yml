@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions/configure-pages@v4
+      - uses: actions/configure-pages@v5
         id: pages
       - run: cargo doc --no-deps
       - name: add redirect
