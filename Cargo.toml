@@ -13,6 +13,7 @@ bench = false
 [features]
 #default = ["panic-serial"]
 panic-serial = ["dep:panic-serial"]
+serial-sync = []
 
 [dependencies]
 panic-halt = "1.0.0"
