@@ -1,0 +1,4 @@
+[general]
+board = "nano168"
+open-console = true
+serial-baudrate = 19200
