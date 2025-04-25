@@ -8,6 +8,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # We set rustflags in cargo/config.toml; per the setup-rust-toolchain docs we must set this empty to make that work.
+  RUSTFLAGS:
 
 permissions:
   actions: none
