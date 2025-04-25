@@ -82,7 +82,6 @@ dependencies = [
  "nb 1.1.0",
  "panic-halt",
  "panic-serial",
- "proc-macro2",
  "ufmt",
 ]
 
