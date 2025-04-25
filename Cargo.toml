@@ -17,18 +17,18 @@ serial-sync = []
 
 [dependencies]
 panic-halt = "1.0.0"
-panic-serial = { version = "0.1.2", features = ["message"] , optional = true}
+panic-serial = { version = "0.1.2", features = [] , optional = true}
 ufmt = "0.2.0"
 nb = "1.1.0"
 embedded-hal = "1.0.0"
 
 [dependencies.arduino-hal]
 git = "https://github.com/Rahix/avr-hal"
-rev = "65b304ec974a13f27ebc2ced21aa462c4b81ce82"
+rev = "fafaf587a32a4500239fd073f89d1b9c36b48092"
 features = ["nano168"]
 
 [dependencies.avr-device]
-version = "0.5.4"
+version = "0.7.0"
 features = ["atmega168"]
 
 # Configure the build for minimal size - AVRs have very little program memory
