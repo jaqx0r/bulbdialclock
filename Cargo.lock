@@ -64,6 +64,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "520f2031240156132bd83639d86aeb5b1907e6a228d9a4b44c3e9699827e6dae"
 dependencies = [
+ "avr-device-macros 0.7.0",
  "bare-metal",
  "cfg-if",
  "vcell",
@@ -77,7 +78,7 @@ checksum = "fc656dd223a67c3b14b2c4e0eba9289a0a6429671bd89a2514c36f38c22c3725"
 dependencies = [
  "anyhow",
  "atdf2svd",
- "avr-device-macros",
+ "avr-device-macros 0.8.0",
  "bare-metal",
  "cfg-if",
  "critical-section",
@@ -88,6 +89,17 @@ dependencies = [
  "syn 2.0.110",
  "vcell",
  "yaml-rust2",
+]
+
+[[package]]
+name = "avr-device-macros"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47c26fd925156183eb10e821b2ef7e06f8163f5a64a0bbe52fc896be2c6cbd3f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
