@@ -28,7 +28,7 @@ rev = "ff4909c00ceee76d60f8bd7cc95bc0f3e2ab673f"
 features = ["nano168"]
 
 [dependencies.avr-device]
-version = "0.7.0"
+version = "0.8.0"
 features = ["atmega168", "rt"]
 
 # Configure the build for minimal size - AVRs have very little program memory
