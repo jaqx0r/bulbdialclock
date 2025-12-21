@@ -59,7 +59,7 @@ pub fn millis() -> u16 {
 pub fn init_tc0(tc0: arduino_hal::pac::TC0) {
     // Configure prescaling in `TCCR0B`.  Arduino chooses 64 by default, here
     // we support more options.  This sets the tick rate from the system clock.
-    tc0.tccr0b.write(|w| match PRESCALER {
+    tc0.tccr0b().write(|w| match PRESCALER {
         1 => w.cs0().direct(), // 16MHz, no prescaling
         8 => w.cs0().prescale_8(), // 16MHz/8
         64 => w.cs0().prescale_64(),  // 16MHz/64
@@ -71,16 +71,16 @@ pub fn init_tc0(tc0: arduino_hal::pac::TC0) {
     // Set the overflow maximum for CTC mode in output compare register
     // `OCR0A`, so that the ISR is triggered when the `TC0`'s tick counter
     // reaches this value.
-    tc0.ocr0a.write(|w| w.bits(TIMER_COUNTS as u8));
+    tc0.ocr0a().write(|w| w.set(TIMER_COUNTS as u8));
 
     // Set overflow behaviour of the timer in `TCCR0A` to Clear Timer on
     // Compare mode.  Issues [`TIMER0_COMPA`] interrupt on overflow, and resets
     // the tick counter when it reaches `OCR0A`'s value.
-    tc0.tccr0a.write(|w| w.wgm0().ctc());
+    tc0.tccr0a().write(|w| w.wgm0().ctc());
 
     // Enable the [`TIMER0_COMPA`] overflow interrupt in `TIMSK0`.  From this point on when the timer
     // overflows and interrupts are enabled, the ISR will run.
-    tc0.timsk0.write(|w| w.ocie0a().set_bit());
+    tc0.timsk0().write(|w| w.ocie0a().set_bit());
 
     // Reset the global millisecond counter.
     avr_device::interrupt::free(|cs| {
