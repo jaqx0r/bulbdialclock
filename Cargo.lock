@@ -60,9 +60,9 @@ dependencies = [
 
 [[package]]
 name = "avr-device"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc656dd223a67c3b14b2c4e0eba9289a0a6429671bd89a2514c36f38c22c3725"
+checksum = "0584fb409e2ff23423979617c6b7ab34628727c8ef8026b665d41f41114060b9"
 dependencies = [
  "anyhow",
  "atdf2svd",
@@ -81,9 +81,9 @@ dependencies = [
 
 [[package]]
 name = "avr-device-macros"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29afa57e753a2d6bfef23613341278afe30bb4e64038e3b481dd04455a243574"
+checksum = "129341bd5b981a038dd2ae0963550bfcb67ad56c64b53aa462cf1a0764405e97"
 dependencies = [
  "proc-macro2",
  "quote",
