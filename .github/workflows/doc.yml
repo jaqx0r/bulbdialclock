@@ -18,7 +18,7 @@ jobs:
       - run: cargo doc --no-deps
       - name: add redirect
         run: echo '<meta http-equiv="refresh" content="0;url=bulbdialclock/index.html">' > target/avr-none/doc/index.html
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: target/avr-none/doc
 
