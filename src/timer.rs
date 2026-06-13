@@ -35,9 +35,9 @@ const MILLIS_INCREMENT: u16 = (PRESCALER * TIMER_COUNTS / 16000) as _;
 // Stores the global millisecond counter.
 static MILLIS_COUNTER: Mutex<cell::Cell<u16>> = Mutex::new(cell::Cell::new(0));
 
-/// Timer/Counter 0 Compare Match A interrupt service routine.
-///
-/// Users must enable `#[feature(abi_avr_interrupt)]` in main.
+// Timer/Counter 0 Compare Match A interrupt service routine.
+//
+// Users must enable `#[feature(abi_avr_interrupt)]` in main.
 #[avr_device::interrupt(atmega168)]
 fn TIMER0_COMPA() {
     avr_device::interrupt::free(|cs| {
