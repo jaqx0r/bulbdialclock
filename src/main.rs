@@ -633,33 +633,33 @@ fn main() -> ! {
                     match setting_time {
                         SettingTime::No => {}
                         SettingTime::Hours => {
-                            if hr_now > 0 {
-                                hr_now = hr_now.wrapping_sub(1);
+                            hr_now = if hr_now > 0 {
+                                hr_now.wrapping_sub(1)
                             } else {
-                                hr_now = 11;
+                                11
                             }
                         }
                         SettingTime::Minutes => {
-                            if min_now > 0 {
-                                min_now = min_now.wrapping_sub(1);
+                            min_now = if min_now > 0 {
+                                min_now.wrapping_sub(1)
                             } else {
-                                min_now = 59;
+                                59
                             }
                         }
                         SettingTime::Seconds => {
-                            if sec_now > 0 {
-                                sec_now = sec_now.wrapping_sub(1);
+                            sec_now = if sec_now > 0 {
+                                sec_now.wrapping_sub(1)
                             } else {
-                                sec_now = 59;
+                                59
                             }
                         }
                     }
                 } else {
                     // Normal brightness adjustment mode
-                    if settings.main_bright > 1 {
-                        settings.main_bright = settings.main_bright.wrapping_sub(1);
+                    settings.main_bright = if settings.main_bright > 1 {
+                        settings.main_bright.wrapping_sub(1)
                     } else {
-                        settings.main_bright = 8;
+                        8
                     }
                 }
             }
@@ -992,7 +992,6 @@ fn main() -> ! {
                 }
             } else {
                 // Regular clock display
-
                 (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next) =
                     normal_time_display(sec_now, min_now, hr_now);
             }
@@ -1084,7 +1083,6 @@ fn main() -> ! {
                     }
                 } else {
                     // No longer in starting mode.
-
                     fades.hr_disp = TEMP_FADE;
                     fades.min_disp = TEMP_FADE;
                     fades.sec_disp = TEMP_FADE;
