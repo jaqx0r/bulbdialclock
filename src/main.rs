@@ -252,10 +252,18 @@ impl Leds {
 
 const START_OPT_TIME_LIMIT: u8 = 30;
 
+/// ClockMode enumerates the overall state of the clock.
+#[derive(PartialEq, Clone, Copy)]
+enum ClockMode {
+    Normal,
+    SettingTime(SettingTime),
+    Option(OptionMode),
+    Align(AlignMode),
+}
+
 /// SettingTime enumerates the time setting states.
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 enum SettingTime {
-    No,
     Hours,
     Minutes,
     Seconds,
@@ -266,7 +274,6 @@ impl SettingTime {
     fn next(&self) -> Self {
         use SettingTime::*;
         match &self {
-            No => No,
             Hours => Minutes,
             Minutes => Seconds,
             Seconds => Hours,
@@ -275,9 +282,8 @@ impl SettingTime {
 }
 
 /// OptionMode enumerates the configuration option setting modes.
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 enum OptionMode {
-    No,
     Red,              // red (upper) colour balance
     Green,            // green (middle) colour balance
     Blue,             // blue (lower) colour balance
@@ -290,7 +296,6 @@ impl OptionMode {
     fn next(&self) -> Self {
         use OptionMode::*;
         match &self {
-            No => No,
             Red => Green,
             Green => Blue,
             Blue => CounterClockwise,
@@ -301,9 +306,8 @@ impl OptionMode {
 }
 
 /// AlignMode enumerates the LED alignment configuration states.  The boolean sets auto-advance mode in each state.
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 enum AlignMode {
-    No,
     Hours(bool),
     Minutes(bool),
     Seconds(bool),
@@ -314,7 +318,6 @@ impl AlignMode {
     fn next(&self) -> Self {
         use AlignMode::*;
         match *self {
-            No => No,
             Hours(true) => Hours(false),
             Hours(false) => Minutes(true),
             Minutes(true) => Minutes(false),
@@ -353,7 +356,6 @@ impl AlignValue {
                     self.value = self.value.wrapping_add(1);
                 }
             }
-            _ => {}
         };
     }
 
@@ -369,7 +371,6 @@ impl AlignValue {
                 AlignMode::Hours(_) => {
                     self.value = 11;
                 }
-                _ => {}
             };
         }
     }
@@ -416,12 +417,9 @@ fn main() -> ! {
     let mut vcr_mode: bool = true; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
     let mut factory_reset_disable: bool = false; // To make sure that we don't accidentally reset the settings...
 
-    let mut setting_time = SettingTime::No;
-    let mut align_mode = AlignMode::No;
-    let mut option_mode = OptionMode::No;
+    let mut mode = ClockMode::Normal;
     let mut align_value = AlignValue { value: 0 };
     let mut align_rate: i8 = 2;
-
     let mut align_loop_count: u8 = 0;
     let mut starting_option: u8 = 0;
 
@@ -519,9 +517,7 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
 
     loop {
-        let mut refresh_time = (align_mode != AlignMode::No)
-            || (setting_time != SettingTime::No)
-            || (option_mode != OptionMode::No);
+        let mut refresh_time = mode != ClockMode::Normal;
 
         let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
 
@@ -539,57 +535,61 @@ fn main() -> ! {
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
                     sleep_mode = false;
-                } else if align_mode != AlignMode::No {
-                    if align_mode.is_auto_advance() {
-                        if align_rate < 2 {
-                            align_rate = align_rate.wrapping_add(1);
-                        }
-                    } else {
-                        align_value.incr(&align_mode);
-                    }
-                } else if option_mode != OptionMode::No {
-                    if option_mode == OptionMode::Red && settings.hr_bright < 62 {
-                        settings.hr_bright = settings.hr_bright.wrapping_add(2);
-                    }
-                    if option_mode == OptionMode::Green && settings.min_bright < 62 {
-                        settings.min_bright = settings.min_bright.wrapping_add(2);
-                    }
-                    if option_mode == OptionMode::Blue && settings.sec_bright < 62 {
-                        settings.sec_bright = settings.sec_bright.wrapping_add(2);
-                    }
-                    if option_mode == OptionMode::CounterClockwise {
-                        settings.ccw = false;
-                    }
-                    if option_mode == OptionMode::Fade {
-                        settings.fade_mode = true;
-                    }
-                } else if setting_time != SettingTime::No {
-                    match setting_time {
-                        SettingTime::No => {}
-                        SettingTime::Hours => {
-                            hr_now = hr_now.wrapping_add(1);
-                            if hr_now > 11 {
-                                hr_now = 0;
-                            }
-                        }
-                        SettingTime::Minutes => {
-                            min_now = min_now.wrapping_add(1);
-                            if min_now > 59 {
-                                min_now = 0;
-                            }
-                        }
-                        SettingTime::Seconds => {
-                            sec_now = sec_now.wrapping_add(1);
-                            if sec_now > 59 {
-                                sec_now = 0;
-                            }
-                        }
-                    }
                 } else {
-                    // Brightness control mode
-                    settings.main_bright = settings.main_bright.wrapping_add(1);
-                    if settings.main_bright > 8 {
-                        settings.main_bright = 1;
+                    match mode {
+                        ClockMode::Align(align_mode) => {
+                            if align_mode.is_auto_advance() {
+                                if align_rate < 2 {
+                                    align_rate = align_rate.wrapping_add(1);
+                                }
+                            } else {
+                                align_value.incr(&align_mode);
+                            }
+                        }
+                        ClockMode::Option(option_mode) => {
+                            if option_mode == OptionMode::Red && settings.hr_bright < 62 {
+                                settings.hr_bright = settings.hr_bright.wrapping_add(2);
+                            }
+                            if option_mode == OptionMode::Green && settings.min_bright < 62 {
+                                settings.min_bright = settings.min_bright.wrapping_add(2);
+                            }
+                            if option_mode == OptionMode::Blue && settings.sec_bright < 62 {
+                                settings.sec_bright = settings.sec_bright.wrapping_add(2);
+                            }
+                            if option_mode == OptionMode::CounterClockwise {
+                                settings.ccw = false;
+                            }
+                            if option_mode == OptionMode::Fade {
+                                settings.fade_mode = true;
+                            }
+                        }
+                        ClockMode::SettingTime(setting_time) => match setting_time {
+                            SettingTime::Hours => {
+                                hr_now = hr_now.wrapping_add(1);
+                                if hr_now > 11 {
+                                    hr_now = 0;
+                                }
+                            }
+                            SettingTime::Minutes => {
+                                min_now = min_now.wrapping_add(1);
+                                if min_now > 59 {
+                                    min_now = 0;
+                                }
+                            }
+                            SettingTime::Seconds => {
+                                sec_now = sec_now.wrapping_add(1);
+                                if sec_now > 59 {
+                                    sec_now = 0;
+                                }
+                            }
+                        },
+                        ClockMode::Normal => {
+                            // Brightness control mode
+                            settings.main_bright = settings.main_bright.wrapping_add(1);
+                            if settings.main_bright > 8 {
+                                settings.main_bright = 1;
+                            }
+                        }
                     }
                 }
             }
@@ -605,61 +605,65 @@ fn main() -> ! {
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
                     sleep_mode = false;
-                } else if align_mode != AlignMode::No {
-                    if align_mode.is_auto_advance() {
-                        if align_rate > -3 {
-                            align_rate = align_rate.wrapping_sub(1);
-                        }
-                    } else {
-                        align_value.decr(&align_mode);
-                    }
-                } else if option_mode != OptionMode::No {
-                    if option_mode == OptionMode::Red && settings.hr_bright > 1 {
-                        settings.hr_bright = settings.hr_bright.wrapping_sub(2);
-                    }
-                    if option_mode == OptionMode::Green && settings.min_bright > 1 {
-                        settings.min_bright = settings.min_bright.wrapping_sub(2);
-                    }
-                    if option_mode == OptionMode::Blue && settings.sec_bright > 1 {
-                        settings.sec_bright = settings.min_bright.wrapping_sub(2);
-                    }
-                    if option_mode == OptionMode::CounterClockwise {
-                        settings.ccw = true;
-                    }
-                    if option_mode == OptionMode::Fade {
-                        settings.fade_mode = false;
-                    }
-                } else if setting_time != SettingTime::No {
-                    match setting_time {
-                        SettingTime::No => {}
-                        SettingTime::Hours => {
-                            hr_now = if hr_now > 0 {
-                                hr_now.wrapping_sub(1)
-                            } else {
-                                11
-                            }
-                        }
-                        SettingTime::Minutes => {
-                            min_now = if min_now > 0 {
-                                min_now.wrapping_sub(1)
-                            } else {
-                                59
-                            }
-                        }
-                        SettingTime::Seconds => {
-                            sec_now = if sec_now > 0 {
-                                sec_now.wrapping_sub(1)
-                            } else {
-                                59
-                            }
-                        }
-                    }
                 } else {
-                    // Normal brightness adjustment mode
-                    settings.main_bright = if settings.main_bright > 1 {
-                        settings.main_bright.wrapping_sub(1)
-                    } else {
-                        8
+                    match mode {
+                        ClockMode::Align(align_mode) => {
+                            if align_mode.is_auto_advance() {
+                                if align_rate > -3 {
+                                    align_rate = align_rate.wrapping_sub(1);
+                                }
+                            } else {
+                                align_value.decr(&align_mode);
+                            }
+                        }
+                        ClockMode::Option(option_mode) => {
+                            if option_mode == OptionMode::Red && settings.hr_bright > 1 {
+                                settings.hr_bright = settings.hr_bright.wrapping_sub(2);
+                            }
+                            if option_mode == OptionMode::Green && settings.min_bright > 1 {
+                                settings.min_bright = settings.min_bright.wrapping_sub(2);
+                            }
+                            if option_mode == OptionMode::Blue && settings.sec_bright > 1 {
+                                settings.sec_bright = settings.min_bright.wrapping_sub(2);
+                            }
+                            if option_mode == OptionMode::CounterClockwise {
+                                settings.ccw = true;
+                            }
+                            if option_mode == OptionMode::Fade {
+                                settings.fade_mode = false;
+                            }
+                        }
+                        ClockMode::SettingTime(setting_time) => match setting_time {
+                            SettingTime::Hours => {
+                                hr_now = if hr_now > 0 {
+                                    hr_now.wrapping_sub(1)
+                                } else {
+                                    11
+                                }
+                            }
+                            SettingTime::Minutes => {
+                                min_now = if min_now > 0 {
+                                    min_now.wrapping_sub(1)
+                                } else {
+                                    59
+                                }
+                            }
+                            SettingTime::Seconds => {
+                                sec_now = if sec_now > 0 {
+                                    sec_now.wrapping_sub(1)
+                                } else {
+                                    59
+                                }
+                            }
+                        },
+                        ClockMode::Normal => {
+                            // Normal brightness adjustment mode
+                            settings.main_bright = if settings.main_bright > 1 {
+                                settings.main_bright.wrapping_sub(1)
+                            } else {
+                                8
+                            }
+                        }
                     }
                 }
             }
@@ -673,17 +677,24 @@ fn main() -> ! {
                 if momentary_override_z {
                     momentary_override_z = false;
                     // Ignore this transition if it was part of a hold sequence.
-                } else if align_mode != AlignMode::No {
-                    align_mode.next();
-                    align_value.reset();
-                    align_rate = 2;
-                } else if option_mode != OptionMode::No {
-                    option_mode.next();
-                    starting_option = 0;
-                } else if setting_time != SettingTime::No {
-                    setting_time.next();
                 } else {
-                    sleep_mode = !sleep_mode;
+                    match mode {
+                        ClockMode::Align(ref mut align_mode) => {
+                            *align_mode = align_mode.next();
+                            align_value.reset();
+                            align_rate = 2;
+                        }
+                        ClockMode::Option(ref mut option_mode) => {
+                            *option_mode = option_mode.next();
+                            starting_option = 0;
+                        }
+                        ClockMode::SettingTime(ref mut setting_time) => {
+                            *setting_time = setting_time.next();
+                        }
+                        ClockMode::Normal => {
+                            sleep_mode = !sleep_mode;
+                        }
+                    }
                 }
             }
         }
@@ -752,19 +763,17 @@ fn main() -> ! {
                     momentary_override_plus = true; // Override momentary-action of switches
                     momentary_override_minus = true; // since we've detected a hold-down condition.
 
-                    option_mode = OptionMode::No;
-                    setting_time = SettingTime::No;
-
                     // Hold + and - for 3 s AT POWER ON to restore factory settings.
                     if !factory_reset_disable {
                         settings = Settings::default();
                         settings.save(&mut ep);
                         leds.all_off(); // Blink LEDs off to indicate restoring data
                         arduino_hal::delay_ms(100);
-                    } else if align_mode != AlignMode::No {
-                        align_mode = AlignMode::No;
+                        mode = ClockMode::Normal;
+                    } else if let ClockMode::Align(_) = mode {
+                        mode = ClockMode::Normal;
                     } else {
-                        align_mode = AlignMode::Hours(true);
+                        mode = ClockMode::Align(AlignMode::Hours(true));
                         align_value.reset();
                         align_rate = 2;
                     }
@@ -773,17 +782,15 @@ fn main() -> ! {
                 HoldMode::Option(3) => {
                     momentary_override_plus = true;
                     momentary_override_z = true;
-                    align_mode = AlignMode::No;
-                    setting_time = SettingTime::No;
 
-                    if option_mode != OptionMode::No {
-                        option_mode = OptionMode::No;
+                    if let ClockMode::Option(_) = mode {
+                        mode = ClockMode::Normal;
                         // Save options if exiting option mode!
                         settings.save(&mut ep);
                         leds.all_off(); // Blink LEDs off to indicate saving data
                         arduino_hal::delay_ms(100);
                     } else {
-                        option_mode = OptionMode::Red;
+                        mode = ClockMode::Option(OptionMode::Red);
                         starting_option = 0;
                     }
                 }
@@ -791,33 +798,29 @@ fn main() -> ! {
                 HoldMode::TimeSet(3) => {
                     momentary_override_z = true;
 
-                    if (align_mode != AlignMode::No)
-                        || (option_mode != OptionMode::No)
-                        || setting_time != SettingTime::No
-                    {
+                    if mode != ClockMode::Normal {
                         // If we were in any of these modes, let's now return us to normalcy.
                         // IF we are exiting time-setting mode, save the time to the RTC, if present:
-                        if setting_time != SettingTime::No && ext_rtc {
-                            ds3231::rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
-                            leds.all_off(); // Blink LEDs off to indicate saving time
-                            arduino_hal::delay_ms(100);
+                        if let ClockMode::SettingTime(_) = mode {
+                            if ext_rtc {
+                                ds3231::rtc_set_time(&mut i2c, hr_now, min_now, sec_now);
+                                leds.all_off(); // Blink LEDs off to indicate saving time
+                                arduino_hal::delay_ms(100);
+                            }
                         }
 
-                        if option_mode != OptionMode::No {
+                        if let ClockMode::Option(_) = mode {
                             // Save options if exiting option mode!
                             settings.save(&mut ep);
                             leds.all_off(); // Blink LEDs off to indicate saving data
                             arduino_hal::delay_ms(100);
                         }
 
-                        setting_time = SettingTime::No;
+                        mode = ClockMode::Normal;
                     } else {
                         // Go to setting mode IF and ONLY IF we were in regular-clock-display mode.
-                        setting_time = SettingTime::Hours; // Start with HOURS in setting mode.
+                        mode = ClockMode::SettingTime(SettingTime::Hours); // Start with HOURS in setting mode.
                     }
-
-                    align_mode = AlignMode::No;
-                    option_mode = OptionMode::No;
                 }
 
                 _ => {}
@@ -833,7 +836,7 @@ fn main() -> ! {
                 min_now = min_now.wrapping_add(1);
 
                 // Do not check RTC time, if we are in time-setting mode.
-                if (setting_time == SettingTime::No) && ext_rtc {
+                if !matches!(mode, ClockMode::SettingTime(_)) && ext_rtc {
                     // Check value at RTC ONCE PER MINUTE, if enabled.
                     if let Ok((seconds, minutes, hours)) = ds3231::rtc_get_time(&mut i2c) {
                         // IF time is off by MORE than two seconds, then correct the displayed time.
@@ -893,7 +896,7 @@ fn main() -> ! {
         if refresh_time {
             // Calculate which LEDs to light up to give the correct shadows:
 
-            if align_mode != AlignMode::No {
+            if let ClockMode::Align(align_mode) = mode {
                 match align_mode {
                     AlignMode::Hours(true)
                     | AlignMode::Minutes(true)
@@ -938,7 +941,7 @@ fn main() -> ! {
                 if hr_disp > 11 {
                     hr_disp = hr_disp.wrapping_sub(12);
                 }
-            } else if option_mode != OptionMode::No {
+            } else if let ClockMode::Option(option_mode) = mode {
                 // Option setting mode
 
                 if starting_option < START_OPT_TIME_LIMIT {
@@ -1026,14 +1029,13 @@ fn main() -> ! {
             hr_disp: 63,
         };
 
-        if setting_time != SettingTime::No {
+        if let ClockMode::SettingTime(setting_time) = mode {
             // i.e., if (SettingTime is nonzero)
             fades.hr_disp = 5;
             fades.min_disp = 5;
             fades.sec_disp = 5;
 
             match setting_time {
-                SettingTime::No => {}
                 SettingTime::Hours => {
                     fades.hr_disp = TEMP_FADE;
                 }
@@ -1044,55 +1046,55 @@ fn main() -> ! {
                     fades.sec_disp = TEMP_FADE;
                 }
             }
-        } else if (align_mode != AlignMode::No) || option_mode != OptionMode::No {
+        } else if let ClockMode::Align(align_mode) = mode {
             // if either...
             fades.hr_disp = 0;
             fades.min_disp = 0;
             fades.sec_disp = 0;
 
-            if align_mode != AlignMode::No {
-                match align_mode {
-                    AlignMode::Hours(_) => {
-                        fades.hr_disp = TEMP_FADE;
-                    }
-                    AlignMode::Minutes(_) => {
-                        fades.min_disp = TEMP_FADE;
-                    }
-                    AlignMode::Seconds(_) => {
-                        fades.sec_disp = TEMP_FADE;
-                    }
-                    _ => {}
+            match align_mode {
+                AlignMode::Hours(_) => {
+                    fades.hr_disp = TEMP_FADE;
+                }
+                AlignMode::Minutes(_) => {
+                    fades.min_disp = TEMP_FADE;
+                }
+                AlignMode::Seconds(_) => {
+                    fades.sec_disp = TEMP_FADE;
+                }
+            }
+        } else if let ClockMode::Option(option_mode) = mode {
+            fades.hr_disp = 0;
+            fades.min_disp = 0;
+            fades.sec_disp = 0;
+            // Must be OptionMode....
+            if starting_option < START_OPT_TIME_LIMIT {
+                if option_mode == OptionMode::Red {
+                    fades.hr_disp = TEMP_FADE;
+                }
+                if option_mode == OptionMode::Green {
+                    fades.min_disp = TEMP_FADE;
+                }
+                if option_mode == OptionMode::Blue {
+                    fades.sec_disp = TEMP_FADE;
+                }
+                if option_mode == OptionMode::CounterClockwise
+                // CW vs CCW
+                {
+                    fades.sec_disp = TEMP_FADE;
+                    fades.min_disp = TEMP_FADE;
                 }
             } else {
-                // Must be OptionMode....
-                if starting_option < START_OPT_TIME_LIMIT {
-                    if option_mode == OptionMode::Red {
-                        fades.hr_disp = TEMP_FADE;
-                    }
-                    if option_mode == OptionMode::Green {
-                        fades.min_disp = TEMP_FADE;
-                    }
-                    if option_mode == OptionMode::Blue {
-                        fades.sec_disp = TEMP_FADE;
-                    }
-                    if option_mode == OptionMode::CounterClockwise
-                    // CW vs CCW
-                    {
-                        fades.sec_disp = TEMP_FADE;
-                        fades.min_disp = TEMP_FADE;
-                    }
-                } else {
-                    // No longer in starting mode.
-                    fades.hr_disp = TEMP_FADE;
-                    fades.min_disp = TEMP_FADE;
-                    fades.sec_disp = TEMP_FADE;
+                // No longer in starting mode.
+                fades.hr_disp = TEMP_FADE;
+                fades.min_disp = TEMP_FADE;
+                fades.sec_disp = TEMP_FADE;
 
-                    if option_mode == OptionMode::CounterClockwise {
-                        // CW vs CCW
-                        fades.hr_disp = 0;
-                    } else {
-                        fades.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
-                    }
+                if option_mode == OptionMode::CounterClockwise {
+                    // CW vs CCW
+                    fades.hr_disp = 0;
+                } else {
+                    fades.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
                 }
             }
         } else {
