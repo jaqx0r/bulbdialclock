@@ -30,6 +30,7 @@
 mod ds3231;
 mod settings;
 use crate::settings::Settings;
+use embedded_hal::digital::InputPin;
 mod timer;
 use crate::timer::*;
 use arduino_hal::{hal::port, prelude::*};
@@ -393,6 +394,36 @@ enum HoldMode {
     Align(u8),
 }
 
+struct Button<P> {
+    pin: P,
+    last_state: bool,
+    momentary_override: bool,
+}
+
+impl<P> Button<P>
+where
+    P: InputPin,
+{
+    fn new(pin: P) -> Self {
+        Self {
+            pin,
+            last_state: false,
+            momentary_override: false,
+        }
+    }
+
+    fn is_pressed(&mut self) -> bool {
+        self.pin.is_low().unwrap_or(false)
+    }
+
+    fn update(&mut self) -> bool {
+        let current = self.is_pressed();
+        let changed = current != self.last_state;
+        self.last_state = current;
+        changed
+    }
+}
+
 #[arduino_hal::entry]
 fn main() -> ! {
     // Current HMS.
@@ -424,10 +455,6 @@ fn main() -> ! {
     let mut starting_option: u8 = 0;
 
     let mut hold_mode = HoldMode::None;
-
-    let mut momentary_override_plus: bool = false;
-    let mut momentary_override_minus: bool = false;
-    let mut momentary_override_z: bool = false;
 
     // Next HMS ring value to fade to.  Initialised in normalTimeDisplay.
     let mut sec_next: u8 = 0;
@@ -481,18 +508,12 @@ fn main() -> ! {
         ],
     };
 
-    // Pull-up resistors for buttons
-    let (plus, minus, z) = (
-        pins.d5.into_pull_up_input(),
-        pins.d6.into_pull_up_input(),
-        pins.d7.into_pull_up_input(),
-    );
+    let mut plus = Button::new(pins.d5.into_pull_up_input());
+    let mut minus = Button::new(pins.d6.into_pull_up_input());
+    let mut z = Button::new(pins.d7.into_pull_up_input());
 
     let mut ep = arduino_hal::Eeprom::new(dp.EEPROM);
     let mut settings = Settings::new(&ep);
-
-    // Pull up inputs are HIGH when open, and LOW when pressed.
-    let (mut plus_last, mut minus_last, mut z_last) = (plus.is_low(), minus.is_low(), z.is_low());
 
     let mut i2c = arduino_hal::I2c::new(
         dp.TWI,
@@ -519,19 +540,19 @@ fn main() -> ! {
     loop {
         let mut refresh_time = mode != ClockMode::Normal;
 
-        let (plus_copy, minus_copy, z_copy) = (plus.is_low(), minus.is_low(), z.is_low());
+        let (plus_changed, minus_changed, z_changed) = (plus.update(), minus.update(), z.update());
 
-        if plus_copy != plus_last || minus_copy != minus_last || z_copy != z_last {
+        if plus_changed || minus_changed || z_changed {
             // Button change detected
 
             vcr_mode = false; // End once any buttons have been pressed...
             time_since_button = 0;
 
-            if !plus_copy && plus_last {
+            if !plus.is_pressed() && !plus.last_state {
                 // "+" Button was pressed previously, and was just released!
 
-                if momentary_override_plus {
-                    momentary_override_plus = false;
+                if plus.momentary_override {
+                    plus.momentary_override = false;
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
                     sleep_mode = false;
@@ -594,14 +615,14 @@ fn main() -> ! {
                 }
             }
 
-            if !minus_copy && minus_last {
+            if !minus.is_pressed() && !minus.last_state {
                 // "-" Button was pressed and just released!
 
                 vcr_mode = false; // End once any buttons have been pressed...
                 time_since_button = 0;
 
-                if momentary_override_minus {
-                    momentary_override_minus = false;
+                if minus.momentary_override {
+                    minus.momentary_override = false;
                     // Ignore this transition if it was part of a hold sequence.
                 } else if sleep_mode {
                     sleep_mode = false;
@@ -668,14 +689,14 @@ fn main() -> ! {
                 }
             }
 
-            if !z_copy && z_last {
+            if !z.is_pressed() && !z.last_state {
                 // "Z" Button was pressed and just released!
 
                 vcr_mode = false; // End once any buttons have been pressed...
                 time_since_button = 0;
 
-                if momentary_override_z {
-                    momentary_override_z = false;
+                if z.momentary_override {
+                    z.momentary_override = false;
                     // Ignore this transition if it was part of a hold sequence.
                 } else {
                     match mode {
@@ -699,8 +720,6 @@ fn main() -> ! {
             }
         }
 
-        (plus_last, minus_last, z_last) = (plus_copy, minus_copy, z_copy);
-
         // The next block detects and deals with the millis() rollover.
         // This introduces an error of up to  1 s, about every 50 days.
         //
@@ -717,8 +736,8 @@ fn main() -> ! {
             last_time = last_time.wrapping_add(1000);
 
             // Check to see if any buttons are being held down:
-            hold_mode = match (plus.is_high(), minus.is_high(), z.is_high()) {
-                (true, true, true) => {
+            hold_mode = match (plus.is_pressed(), minus.is_pressed(), z.is_pressed()) {
+                (false, false, false) => {
                     // No buttons are pressed.
                     factory_reset_disable = true;
 
@@ -731,7 +750,7 @@ fn main() -> ! {
                     }
                     HoldMode::None
                 }
-                (false, false, true) => {
+                (true, true, false) => {
                     // "+" and "-" are pressed down. "Z" is up.
                     // We are holding for alignment mode.
                     match hold_mode {
@@ -739,7 +758,7 @@ fn main() -> ! {
                         _ => HoldMode::Align(1),
                     }
                 }
-                (false, true, false) => {
+                (true, false, true) => {
                     // "+" and "Z" are pressed down. "-" is up.
                     // We are holding for option setting mode.
                     match hold_mode {
@@ -747,7 +766,7 @@ fn main() -> ! {
                         _ => HoldMode::Option(1),
                     }
                 }
-                (true, true, false) => {
+                (false, false, true) => {
                     // "Z" is pressed down. "+" and "-" are up.
                     // We are holding for time setting mode.
                     match hold_mode {
@@ -760,8 +779,10 @@ fn main() -> ! {
 
             match hold_mode {
                 HoldMode::Align(3) => {
-                    momentary_override_plus = true; // Override momentary-action of switches
-                    momentary_override_minus = true; // since we've detected a hold-down condition.
+                    // Override momentary-action of switches
+                    // since we've detected a hold-down condition.
+                    plus.momentary_override = true;
+                    minus.momentary_override = true;
 
                     // Hold + and - for 3 s AT POWER ON to restore factory settings.
                     if !factory_reset_disable {
@@ -780,8 +801,10 @@ fn main() -> ! {
                 }
 
                 HoldMode::Option(3) => {
-                    momentary_override_plus = true;
-                    momentary_override_z = true;
+                    // Override momentary-action of switches
+                    // since we've detected a hold-down condition.
+                    plus.momentary_override = true;
+                    z.momentary_override = true;
 
                     if let ClockMode::Option(_) = mode {
                         mode = ClockMode::Normal;
@@ -796,7 +819,9 @@ fn main() -> ! {
                 }
 
                 HoldMode::TimeSet(3) => {
-                    momentary_override_z = true;
+                    // Override momentary-action of switches
+                    // since we've detected a hold-down condition.
+                    z.momentary_override = true;
 
                     if mode != ClockMode::Normal {
                         // If we were in any of these modes, let's now return us to normalcy.
