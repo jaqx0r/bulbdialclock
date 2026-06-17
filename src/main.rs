@@ -27,13 +27,15 @@
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
+mod leds;
 mod ds3231;
 mod settings;
 use crate::settings::Settings;
+use crate::leds::Leds;
 use embedded_hal::digital::InputPin;
 mod timer;
 use crate::timer::*;
-use arduino_hal::{hal::port, prelude::*};
+use arduino_hal::prelude::*;
 use core::cmp::Ordering;
 
 #[cfg(feature = "serial-sync")]
@@ -221,35 +223,7 @@ impl Fades {
     }
 }
 
-struct Leds {
-    pins: [port::Pin<port::mode::Input<port::mode::Floating>, port::Dynamic>; 10],
-}
 
-impl Leds {
-    /// Activate a LED given a pin pair in the charlieplexed array.  See the
-    /// bulbdial schematic
-    /// <https://bcdn.evilmadscientist.com/source/beedyschem.pdf> and refer to
-    /// the Evil Mad Scientist article on the design of the Bulbdial clock for
-    /// more details on charlieplexing:
-    /// <https://www.evilmadscientist.com/2010/on-the-design-of-the-bulbdial-clock/>
-    /// Per that documentation and the C source code we know that the high
-    /// impedance (hi Z) pin mode is performed by setting the pin into input
-    /// mode.
-    fn activate(&mut self, hi: u8, lo: u8, delay: u8) {
-        let hi_off = hi.wrapping_sub(1) as usize;
-        let lo_off = lo.wrapping_sub(1) as usize;
-        // # SAFETY: We put it right back afterwards.
-        let hi_pin = unsafe { core::ptr::read(&self.pins[hi_off]) }.into_output_high();
-        let lo_pin = unsafe { core::ptr::read(&self.pins[lo_off]) }.into_output();
-        delay_time(delay);
-        self.pins[hi_off] = hi_pin.into_floating_input();
-        self.pins[lo_off] = lo_pin.into_floating_input();
-    }
-
-    fn all_off(&mut self) {
-        // all off by default, kept for backwards compatibility in the option setting modes.
-    }
-}
 
 const START_OPT_TIME_LIMIT: u8 = 30;
 
@@ -493,20 +467,18 @@ fn main() -> ! {
 
     // Converted from original by correlating the Arduino C PORTx and DDRx bit manipulation against
     // https://docs.arduino.cc/hacking/hardware/PinMapping168
-    let mut leds = Leds {
-        pins: [
-            pins.d10.downgrade(), // 1 - PB2
-            pins.a0.downgrade(),  // 2 - PC0
-            pins.a1.downgrade(),  // 3 - PC1
-            pins.a2.downgrade(),  // 4 - PC2
-            pins.a3.downgrade(),  // 5 - PC3
-            pins.d4.downgrade(),  // 6 - PD4
-            pins.d2.downgrade(),  // 7 - PD2
-            pins.d8.downgrade(),  // 8 - PB0
-            pins.d3.downgrade(),  // 9 - PD3
-            pins.d9.downgrade(),  // 10 - PB1
-        ],
-    };
+    let mut leds = Leds::new([
+        pins.d10.into_floating_input().downgrade(), // 1 - PB2
+        pins.a0.into_floating_input().downgrade(),  // 2 - PC0
+        pins.a1.into_floating_input().downgrade(),  // 3 - PC1
+        pins.a2.into_floating_input().downgrade(),  // 4 - PC2
+        pins.a3.into_floating_input().downgrade(),  // 5 - PC3
+        pins.d4.into_floating_input().downgrade(),  // 6 - PD4
+        pins.d2.into_floating_input().downgrade(),  // 7 - PD2
+        pins.d8.into_floating_input().downgrade(),  // 8 - PB0
+        pins.d3.into_floating_input().downgrade(),  // 9 - PD3
+        pins.d9.into_floating_input().downgrade(),  // 10 - PB1
+    ]);
 
     let mut plus = Button::new(pins.d5.into_pull_up_input());
     let mut minus = Button::new(pins.d6.into_pull_up_input());
