@@ -27,11 +27,11 @@
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
-mod leds;
 mod ds3231;
+mod leds;
 mod settings;
-use crate::settings::Settings;
 use crate::leds::Leds;
+use crate::settings::Settings;
 use embedded_hal::digital::InputPin;
 mod timer;
 use crate::timer::*;
@@ -223,14 +223,14 @@ impl Fades {
     }
 }
 
-
-
 const START_OPT_TIME_LIMIT: u8 = 30;
 
 /// ClockMode enumerates the overall state of the clock.
 #[derive(PartialEq, Clone, Copy)]
 enum ClockMode {
+    Vcr,
     Normal,
+    Sleep,
     SettingTime(SettingTime),
     Option(OptionMode),
     Align(AlignMode),
@@ -417,12 +417,9 @@ fn main() -> ! {
     let mut time_since_button: u8 = 0;
 
     // Modes:
-    let mut sleep_mode: bool = false;
-
-    let mut vcr_mode: bool = true; // In VCR mode, the clock blinks at you because the time hasn't been set yet.  Initially 1 because time is NOT yet set.
     let mut factory_reset_disable: bool = false; // To make sure that we don't accidentally reset the settings...
 
-    let mut mode = ClockMode::Normal;
+    let mut mode = ClockMode::Vcr;
     let mut align_value = AlignValue { value: 0 };
     let mut align_rate: i8 = 2;
     let mut align_loop_count: u8 = 0;
@@ -498,7 +495,7 @@ fn main() -> ! {
     let ext_rtc = match ds3231::rtc_get_time(&mut i2c) {
         Ok(v) => {
             (sec_now, min_now, hr_now) = v;
-            vcr_mode = false;
+            mode = ClockMode::Normal;
             true
         }
         Err(e) => {
@@ -510,14 +507,14 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
 
     loop {
-        let mut refresh_time = mode != ClockMode::Normal;
+        let mut refresh_time = mode != ClockMode::Normal && mode != ClockMode::Sleep;
 
         let (plus_changed, minus_changed, z_changed) = (plus.update(), minus.update(), z.update());
 
         if plus_changed || minus_changed || z_changed {
             // Button change detected
 
-            vcr_mode = false; // End once any buttons have been pressed...
+            mode = ClockMode::Normal; // End once any buttons have been pressed...
             time_since_button = 0;
 
             if !plus.is_pressed() && !plus.last_state {
@@ -526,8 +523,8 @@ fn main() -> ! {
                 if plus.momentary_override {
                     plus.momentary_override = false;
                     // Ignore this transition if it was part of a hold sequence.
-                } else if sleep_mode {
-                    sleep_mode = false;
+                } else if mode == ClockMode::Sleep {
+                    mode = ClockMode::Normal;
                 } else {
                     match mode {
                         ClockMode::Align(align_mode) => {
@@ -576,6 +573,7 @@ fn main() -> ! {
                                 }
                             }
                         },
+                        ClockMode::Vcr | ClockMode::Sleep => {}
                         ClockMode::Normal => {
                             // Brightness control mode
                             settings.main_bright = settings.main_bright.wrapping_add(1);
@@ -590,14 +588,14 @@ fn main() -> ! {
             if !minus.is_pressed() && !minus.last_state {
                 // "-" Button was pressed and just released!
 
-                vcr_mode = false; // End once any buttons have been pressed...
+                mode = ClockMode::Normal; // End once any buttons have been pressed...
                 time_since_button = 0;
 
                 if minus.momentary_override {
                     minus.momentary_override = false;
                     // Ignore this transition if it was part of a hold sequence.
-                } else if sleep_mode {
-                    sleep_mode = false;
+                } else if mode == ClockMode::Sleep {
+                    mode = ClockMode::Normal;
                 } else {
                     match mode {
                         ClockMode::Align(align_mode) => {
@@ -649,6 +647,7 @@ fn main() -> ! {
                                 }
                             }
                         },
+                        ClockMode::Vcr | ClockMode::Sleep => {}
                         ClockMode::Normal => {
                             // Normal brightness adjustment mode
                             settings.main_bright = if settings.main_bright > 1 {
@@ -664,7 +663,7 @@ fn main() -> ! {
             if !z.is_pressed() && !z.last_state {
                 // "Z" Button was pressed and just released!
 
-                vcr_mode = false; // End once any buttons have been pressed...
+                mode = ClockMode::Normal; // End once any buttons have been pressed...
                 time_since_button = 0;
 
                 if z.momentary_override {
@@ -684,8 +683,12 @@ fn main() -> ! {
                         ClockMode::SettingTime(ref mut setting_time) => {
                             *setting_time = setting_time.next();
                         }
+                        ClockMode::Vcr => {}
                         ClockMode::Normal => {
-                            sleep_mode = !sleep_mode;
+                            mode = ClockMode::Sleep;
+                        }
+                        ClockMode::Sleep => {
+                            mode = ClockMode::Normal;
                         }
                     }
                 }
@@ -1098,11 +1101,12 @@ fn main() -> ! {
             fades.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
         }
 
-        let tempbright: u16 = if sleep_mode || (vcr_mode && (sec_now & 1 != 0)) {
-            0
-        } else {
-            settings.main_bright as u16
-        };
+        let tempbright: u16 =
+            if mode == ClockMode::Sleep || (mode == ClockMode::Vcr && (sec_now & 1 != 0)) {
+                0
+            } else {
+                settings.main_bright as u16
+            };
 
         // 0-63 (6) * 0-63 (6) * 0-8 (3) dynamic range is 15 bits.
         // Shifted 7 puts the high bits into a u8.
