@@ -61,6 +61,26 @@ fn delay_time(cycles: u8) {
     }
 }
 
+struct Offsets {
+    disp: u8,
+    next: u8,
+}
+struct RingOffsets {
+    hr: Offsets,
+    min: Offsets,
+    sec: Offsets,
+}
+impl RingOffsets {
+    fn apply_ccw(&mut self) {
+        self.hr.disp = 12 - self.hr.disp;
+        self.hr.next = 12 - self.hr.next;
+        self.min.disp = 30 - self.min.disp;
+        self.min.next = 30 - self.min.next;
+        self.sec.disp = 30 - self.sec.disp;
+        self.sec.next = 30 - self.sec.next;
+    }
+}
+
 /// Array of pin pairs to set as output hi/lo to activate a LED in the blue
 /// Seconds ring.  Pin numbering refers to the index in `Leds.take*`.
 // LED pin activation is a 6x6 matrix of column high and row low; with no
@@ -435,12 +455,11 @@ fn main() -> ! {
     // Pin pair offset to take high/low in each pass of the main loop to activate LEDs
     // for h/m/s current and next. Initialised at end of `refresh_time`
     // conditional.
-    let mut hr_disp_offset: u8 = 0;
-    let mut hr_next_offset: u8 = 0;
-    let mut min_disp_offset: u8 = 0;
-    let mut min_next_offset: u8 = 0;
-    let mut sec_disp_offset: u8 = 0;
-    let mut sec_next_offset: u8 = 0;
+    let mut offsets = RingOffsets {
+        hr: Offsets { disp: 0, next: 0 },
+        min: Offsets { disp: 0, next: 0 },
+        sec: Offsets { disp: 0, next: 0 },
+    };
 
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
@@ -999,25 +1018,26 @@ fn main() -> ! {
                     normal_time_display(sec_now, min_now, hr_now);
             }
 
-            (
-                hr_disp_offset,
-                hr_next_offset,
-                min_disp_offset,
-                min_next_offset,
-                sec_disp_offset,
-                sec_next_offset,
-            ) = if settings.ccw {
-                (
-                    12 - hr_disp,
-                    12 - hr_next,
-                    30 - min_disp,
-                    30 - min_next,
-                    30 - sec_disp,
-                    30 - sec_next,
-                )
-            } else {
-                (hr_disp, hr_next, min_disp, min_next, sec_disp, sec_next)
-            };
+            offsets = {
+                let mut o = RingOffsets {
+                    hr: Offsets {
+                        disp: hr_disp,
+                        next: hr_next,
+                    },
+                    min: Offsets {
+                        disp: min_disp,
+                        next: min_next,
+                    },
+                    sec: Offsets {
+                        disp: sec_disp,
+                        next: sec_next,
+                    },
+                };
+                if settings.ccw {
+                    o.apply_ccw();
+                }
+                o
+            }
         }
 
         let mut fades = Fades {
@@ -1129,32 +1149,32 @@ fn main() -> ! {
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
         for _ in 0..128 {
             if hr_disp_delay > 0 {
-                let (hi, lo) = HR_PINS[hr_disp_offset as usize];
+                let (hi, lo) = HR_PINS[offsets.hr.disp as usize];
                 leds.activate(hi, lo, hr_disp_delay);
             }
 
             if hr_next_delay > 0 {
-                let (hi, lo) = HR_PINS[hr_next_offset as usize];
+                let (hi, lo) = HR_PINS[offsets.hr.next as usize];
                 leds.activate(hi, lo, hr_next_delay);
             }
 
             if min_disp_delay > 0 {
-                let (hi, lo) = MIN_PINS[min_disp_offset as usize];
+                let (hi, lo) = MIN_PINS[offsets.min.disp as usize];
                 leds.activate(hi, lo, min_disp_delay);
             }
 
             if min_next_delay > 0 {
-                let (hi, lo) = MIN_PINS[min_next_offset as usize];
+                let (hi, lo) = MIN_PINS[offsets.min.next as usize];
                 leds.activate(hi, lo, min_next_delay);
             }
 
             if sec_disp_delay > 0 {
-                let (hi, lo) = SEC_PINS[sec_disp_offset as usize];
+                let (hi, lo) = SEC_PINS[offsets.sec.disp as usize];
                 leds.activate(hi, lo, sec_disp_delay);
             }
 
             if sec_next_delay > 0 {
-                let (hi, lo) = SEC_PINS[sec_next_offset as usize];
+                let (hi, lo) = SEC_PINS[offsets.sec.next as usize];
                 leds.activate(hi, lo, sec_next_delay);
             }
 
