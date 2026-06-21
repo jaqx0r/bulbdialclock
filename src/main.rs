@@ -496,6 +496,11 @@ fn main() -> ! {
         pins.d9.into_floating_input().downgrade(),  // 10 - PB1
     ]);
 
+    use crate::leds::LedRing;
+    const HR_RING: LedRing = LedRing::new(&HR_PINS);
+    const MIN_RING: LedRing = LedRing::new(&MIN_PINS);
+    const SEC_RING: LedRing = LedRing::new(&SEC_PINS);
+
     let mut plus = Button::new(pins.d5.into_pull_up_input());
     let mut minus = Button::new(pins.d6.into_pull_up_input());
     let mut z = Button::new(pins.d7.into_pull_up_input());
@@ -1130,52 +1135,46 @@ fn main() -> ! {
 
         // 0-63 (6) * 0-63 (6) * 0-8 (3) dynamic range is 15 bits.
         // Shifted 7 puts the high bits into a u8.
-        macro_rules! calc_delay {
-            ($bright:expr, $disp:expr) => {{
-                (($bright as u16)
-                    .wrapping_mul($disp as u16)
-                    .wrapping_mul(tempbright)
-                    >> 7) as u8
-            }};
+        #[inline]
+        fn calc_delay(bright: u8, disp: u8, tempbright: u16) -> u8 {
+            ((bright as u16)
+                .wrapping_mul(disp as u16)
+                .wrapping_mul(tempbright)
+                >> 7) as u8
         }
-        let hr_disp_delay = calc_delay!(settings.hr_bright, fades.hr_disp);
-        let hr_next_delay = calc_delay!(settings.hr_bright, fades.hr_next);
-        let min_disp_delay = calc_delay!(settings.min_bright, fades.min_disp);
-        let min_next_delay = calc_delay!(settings.min_bright, fades.min_next);
-        let sec_disp_delay = calc_delay!(settings.sec_bright, fades.sec_disp);
-        let sec_next_delay = calc_delay!(settings.sec_bright, fades.sec_next);
+
+        let hr_disp_delay = calc_delay(settings.hr_bright, fades.hr_disp, tempbright);
+        let hr_next_delay = calc_delay(settings.hr_bright, fades.hr_next, tempbright);
+        let min_disp_delay = calc_delay(settings.min_bright, fades.min_disp, tempbright);
+        let min_next_delay = calc_delay(settings.min_bright, fades.min_next, tempbright);
+        let sec_disp_delay = calc_delay(settings.sec_bright, fades.sec_disp, tempbright);
+        let sec_next_delay = calc_delay(settings.sec_bright, fades.sec_next, tempbright);
 
         // This is the loop where we actually light up the LEDs:
         // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
         for _ in 0..128 {
             if hr_disp_delay > 0 {
-                let (hi, lo) = HR_PINS[offsets.hr.disp as usize];
-                leds.activate(hi, lo, hr_disp_delay);
+                HR_RING.activate(&mut leds, offsets.hr.disp, hr_disp_delay);
             }
 
             if hr_next_delay > 0 {
-                let (hi, lo) = HR_PINS[offsets.hr.next as usize];
-                leds.activate(hi, lo, hr_next_delay);
+                HR_RING.activate(&mut leds, offsets.hr.next, hr_next_delay);
             }
 
             if min_disp_delay > 0 {
-                let (hi, lo) = MIN_PINS[offsets.min.disp as usize];
-                leds.activate(hi, lo, min_disp_delay);
+                MIN_RING.activate(&mut leds, offsets.min.disp, min_disp_delay);
             }
 
             if min_next_delay > 0 {
-                let (hi, lo) = MIN_PINS[offsets.min.next as usize];
-                leds.activate(hi, lo, min_next_delay);
+                MIN_RING.activate(&mut leds, offsets.min.next, min_next_delay);
             }
 
             if sec_disp_delay > 0 {
-                let (hi, lo) = SEC_PINS[offsets.sec.disp as usize];
-                leds.activate(hi, lo, sec_disp_delay);
+                SEC_RING.activate(&mut leds, offsets.sec.disp, sec_disp_delay);
             }
 
             if sec_next_delay > 0 {
-                let (hi, lo) = SEC_PINS[offsets.sec.next as usize];
-                leds.activate(hi, lo, sec_next_delay);
+                SEC_RING.activate(&mut leds, offsets.sec.next, sec_next_delay);
             }
 
             if settings.main_bright < 8 {

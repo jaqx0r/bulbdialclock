@@ -67,3 +67,18 @@ impl Leds {
         // all off by default, kept for backwards compatibility in the option setting modes.
     }
 }
+
+pub struct LedRing {
+    pins: &'static [(u8, u8)],
+}
+
+impl LedRing {
+    pub const fn new(pins: &'static [(u8, u8)]) -> Self {
+        Self { pins }
+    }
+
+    pub fn activate(&self, leds: &mut Leds, index: u8, delay: u8) {
+        let (hi, lo) = self.pins[index as usize];
+        leds.activate(hi, lo, delay);
+    }
+}
