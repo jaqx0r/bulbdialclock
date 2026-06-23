@@ -121,4 +121,12 @@ impl Settings {
     pub fn has_changed_since_last_save(&self) -> bool {
         self.last_saved_brightness != self.main_bright
     }
+
+    pub fn is_sleep_mode(&self) -> bool {
+        false
+    }
+
+    pub fn is_vcr_mode(&self) -> bool {
+        false
+    }
 }

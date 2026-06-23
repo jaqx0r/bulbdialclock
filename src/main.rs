@@ -30,7 +30,7 @@
 mod ds3231;
 mod leds;
 mod settings;
-use crate::leds::Leds;
+use crate::leds::{DisplayController, Leds};
 use crate::settings::Settings;
 use embedded_hal::digital::InputPin;
 mod timer;
@@ -58,26 +58,6 @@ const TEMP_FADE: u8 = 63;
 fn delay_time(cycles: u8) {
     for _ in 0..cycles {
         avr_device::asm::nop();
-    }
-}
-
-struct Offsets {
-    disp: u8,
-    next: u8,
-}
-struct RingOffsets {
-    hr: Offsets,
-    min: Offsets,
-    sec: Offsets,
-}
-impl RingOffsets {
-    fn apply_ccw(&mut self) {
-        self.hr.disp = 12 - self.hr.disp;
-        self.hr.next = 12 - self.hr.next;
-        self.min.disp = 30 - self.min.disp;
-        self.min.next = 30 - self.min.next;
-        self.sec.disp = 30 - self.sec.disp;
-        self.sec.next = 30 - self.sec.next;
     }
 }
 
@@ -177,72 +157,7 @@ const HR_PINS: [(u8, u8); 12] = [
     (10, 5), // D105
 ];
 
-#[must_use]
-fn normal_time_display(sec_now: u8, min_now: u8, hr_now: u8) -> (u8, u8, u8, u8, u8, u8) {
-    // Offset by 30 s to project *shadow* in the right place.
-    // Divide by two, since there are 30 LEDs, not 60.
-    let sec_disp = (sec_now.wrapping_add(30) % 60).wrapping_div(2);
-    let sec_next = sec_disp.wrapping_add(1) % 30;
-
-    // Offset by 30 m to project *shadow* in the right place.
-    // Divide by two, since there are 30 LEDs, not 60.
-    let min_disp = (min_now.wrapping_add(30) % 60).wrapping_div(2);
-    let min_next = min_disp.wrapping_add(1) % 30;
-
-    // Offset by 6 h to project *shadow* in the right place.
-    let hr_disp = hr_now.wrapping_add(6) % 12;
-    let hr_next = hr_disp.wrapping_add(1) % 12;
-
-    (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next)
-}
-
-/// Fade multipliers for the hour, minute, and second rings.
-struct Fades {
-    /// Hour ring fade multiplier for the outgoing LED. 0-63
-    hr_disp: u8,
-    /// Hour ring fade multiplier for the incoming LED. 0-63
-    hr_next: u8,
-    /// Minute ring fade multiplier for the outgoing LED. 0-63
-    min_disp: u8,
-    /// Minute ring fade multiplier for the incoming LED. 0-63
-    min_next: u8,
-    /// Second ring fade multiplier for the outgoing LED. 0-63
-    sec_disp: u8,
-    /// Second ring fade multiplier for the incoming LED. 0-63
-    sec_next: u8,
-}
-
-impl Fades {
-    /// Compute the normal fade for a given timestamp.  Fades set the brightness multiplier for the incoming and outgoing LED for each ring.
-    fn normal(&mut self, time_delta_ms: u16, fade_mode: bool, sec_now: u8, min_now: u8) {
-        if fade_mode {
-            // Normal time display
-            if sec_now & 1 != 0 {
-                // ODD time
-                self.sec_next = 63u16.wrapping_mul(time_delta_ms).wrapping_div(1000) as u8;
-                self.sec_disp = 63u8.wrapping_sub(self.sec_next);
-            }
-
-            if min_now & 1 != 0 && sec_now == 59 {
-                // ODD time
-                self.min_next = self.sec_next;
-                self.min_disp = self.sec_disp;
-            }
-
-            // End of the hour, only:
-            if min_now == 59 && sec_now == 59 {
-                self.hr_next = self.sec_next;
-                self.hr_disp = self.sec_disp;
-            }
-        } else {
-            // no fading
-            self.hr_disp = TEMP_FADE;
-            self.min_disp = TEMP_FADE;
-            self.sec_disp = TEMP_FADE;
-        }
-    }
-}
-
+// A time limit after which we exit option setting mode.
 const START_OPT_TIME_LIMIT: u8 = 30;
 
 /// ClockMode enumerates the overall state of the clock.
@@ -447,19 +362,7 @@ fn main() -> ! {
 
     let mut hold_mode = HoldMode::None;
 
-    // Next HMS ring value to fade to.  Initialised in normalTimeDisplay.
-    let mut sec_next: u8 = 0;
-    let mut min_next: u8 = 0;
-    let mut hr_next: u8 = 0;
-
-    // Pin pair offset to take high/low in each pass of the main loop to activate LEDs
-    // for h/m/s current and next. Initialised at end of `refresh_time`
-    // conditional.
-    let mut offsets = RingOffsets {
-        hr: Offsets { disp: 0, next: 0 },
-        min: Offsets { disp: 0, next: 0 },
-        sec: Offsets { disp: 0, next: 0 },
-    };
+    let mut controller = DisplayController::new();
 
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
@@ -496,10 +399,9 @@ fn main() -> ! {
         pins.d9.into_floating_input().downgrade(),  // 10 - PB1
     ]);
 
-    use crate::leds::LedRing;
-    const HR_RING: LedRing = LedRing::new(&HR_PINS);
-    const MIN_RING: LedRing = LedRing::new(&MIN_PINS);
-    const SEC_RING: LedRing = LedRing::new(&SEC_PINS);
+    let hr_ring = crate::leds::LedRing::new(&HR_PINS);
+    let min_ring = crate::leds::LedRing::new(&MIN_PINS);
+    let sec_ring = crate::leds::LedRing::new(&SEC_PINS);
 
     let mut plus = Button::new(pins.d5.into_pull_up_input());
     let mut minus = Button::new(pins.d6.into_pull_up_input());
@@ -639,7 +541,7 @@ fn main() -> ! {
                                 settings.min_bright = settings.min_bright.wrapping_sub(2);
                             }
                             if option_mode == OptionMode::Blue && settings.sec_bright > 1 {
-                                settings.sec_bright = settings.min_bright.wrapping_sub(2);
+                                settings.sec_bright = settings.sec_bright.wrapping_sub(2);
                             }
                             if option_mode == OptionMode::CounterClockwise {
                                 settings.ccw = true;
@@ -720,7 +622,7 @@ fn main() -> ! {
         }
 
         // The next block detects and deals with the millis() rollover.
-        // This introduces an error of up to  1 s, about every 50 days.
+        // This introduces an error of about 1 s every 50 days.
         //
         // (If you have the standard quartz timebase, this will not dominate the inaccuracy.
         // If you have the optional RTC, this error will be corrected next time we read the
@@ -850,8 +752,8 @@ fn main() -> ! {
                 _ => {}
             }
 
-            // Note: this section could act funny if you hold the buttons for 256 or more seconds.
-            // So... um... don't do that.  :P
+            // Note: this section could act funny if buttons are held for 256 or more seconds.
+            // So... um... don't do that.
 
             sec_now = sec_now.wrapping_add(1);
 
@@ -864,10 +766,10 @@ fn main() -> ! {
                     // Check value at RTC ONCE PER MINUTE, if enabled.
                     if let Ok((seconds, minutes, hours)) = ds3231::rtc_get_time(&mut i2c) {
                         // IF time is off by MORE than two seconds, then correct the displayed time.
-                        // Otherwise, DO NOT update the time, it may be a sampling error rather than an
-                        // actual offset.
-                        // Skip checking if minutes == 0. -- the 12:00:00 rollover is distracting,
-                        // UNLESS this is the first time running after reset.
+                        // Otherwise, DO NOT update the time, as it may be a sampling error
+                        // rather than an actual offset.
+                        // Skip checking if minutes == 0 to avoid distraction during 12:00:00 rollover,
+                        // unless this is the first time running after reset.
 
                         let updatetime = if (minutes != 0) && (min_now != 0) {
                             // Values read from RTC
@@ -887,7 +789,7 @@ fn main() -> ! {
                                 temptime2.wrapping_sub(temptime1) > 2
                             }
                         } else {
-                            // if (ExtRTC) is equivalent to saying,  "if this has run before"
+                            // !ext_rtc indicates this has run before.
                             !ext_rtc
                         };
 
@@ -999,7 +901,7 @@ fn main() -> ! {
                         if option_mode == OptionMode::CounterClockwise
                             || option_mode == OptionMode::Fade
                         {
-                            // CW vs CCW OR fade mode
+                            // CW vs CCW or fade mode
                             starting_option = START_OPT_TIME_LIMIT; // Exit this loop
                         }
                     }
@@ -1013,177 +915,95 @@ fn main() -> ! {
                         }
                         sec_disp = min_disp;
                     } else {
-                        (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next) =
-                            normal_time_display(sec_now, min_now, hr_now);
+                        // Regular time display
+                        controller.update_time(hr_now, min_now, sec_now, settings.ccw);
                     }
                 }
             } else {
                 // Regular clock display
-                (sec_disp, sec_next, min_disp, min_next, hr_disp, hr_next) =
-                    normal_time_display(sec_now, min_now, hr_now);
-            }
-
-            offsets = {
-                let mut o = RingOffsets {
-                    hr: Offsets {
-                        disp: hr_disp,
-                        next: hr_next,
-                    },
-                    min: Offsets {
-                        disp: min_disp,
-                        next: min_next,
-                    },
-                    sec: Offsets {
-                        disp: sec_disp,
-                        next: sec_next,
-                    },
-                };
-                if settings.ccw {
-                    o.apply_ccw();
-                }
-                o
+                controller.update_time(hr_now, min_now, sec_now, settings.ccw);
             }
         }
 
-        let mut fades = Fades {
-            sec_next: 0,
-            sec_disp: 63,
-            min_next: 0,
-            min_disp: 63,
-            hr_next: 0,
-            hr_disp: 63,
-        };
-
-        if let ClockMode::SettingTime(setting_time) = mode {
-            // i.e., if (SettingTime is nonzero)
-            fades.hr_disp = 5;
-            fades.min_disp = 5;
-            fades.sec_disp = 5;
-
-            match setting_time {
-                SettingTime::Hours => {
-                    fades.hr_disp = TEMP_FADE;
-                }
-                SettingTime::Minutes => {
-                    fades.min_disp = TEMP_FADE;
-                }
-                SettingTime::Seconds => {
-                    fades.sec_disp = TEMP_FADE;
-                }
-            }
-        } else if let ClockMode::Align(align_mode) = mode {
-            // if either...
-            fades.hr_disp = 0;
-            fades.min_disp = 0;
-            fades.sec_disp = 0;
-
-            match align_mode {
-                AlignMode::Hours(_) => {
-                    fades.hr_disp = TEMP_FADE;
-                }
-                AlignMode::Minutes(_) => {
-                    fades.min_disp = TEMP_FADE;
-                }
-                AlignMode::Seconds(_) => {
-                    fades.sec_disp = TEMP_FADE;
-                }
-            }
-        } else if let ClockMode::Option(option_mode) = mode {
-            fades.hr_disp = 0;
-            fades.min_disp = 0;
-            fades.sec_disp = 0;
-            // Must be OptionMode....
-            if starting_option < START_OPT_TIME_LIMIT {
-                if option_mode == OptionMode::Red {
-                    fades.hr_disp = TEMP_FADE;
-                }
-                if option_mode == OptionMode::Green {
-                    fades.min_disp = TEMP_FADE;
-                }
-                if option_mode == OptionMode::Blue {
-                    fades.sec_disp = TEMP_FADE;
-                }
-                if option_mode == OptionMode::CounterClockwise
-                // CW vs CCW
-                {
-                    fades.sec_disp = TEMP_FADE;
-                    fades.min_disp = TEMP_FADE;
-                }
-            } else {
-                // No longer in starting mode.
-                fades.hr_disp = TEMP_FADE;
-                fades.min_disp = TEMP_FADE;
-                fades.sec_disp = TEMP_FADE;
-
-                if option_mode == OptionMode::CounterClockwise {
-                    // CW vs CCW
-                    fades.hr_disp = 0;
-                } else {
-                    fades.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
-                }
-            }
-        } else {
-            fades.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
-        }
-
-        let tempbright: u16 =
-            if mode == ClockMode::Sleep || (mode == ClockMode::Vcr && (sec_now & 1 != 0)) {
-                0
-            } else {
-                settings.main_bright as u16
+        controller.fades = {
+            let mut f = crate::leds::Fades {
+                sec_next: 0,
+                sec_disp: 63,
+                min_next: 0,
+                min_disp: 63,
+                hr_next: 0,
+                hr_disp: 63,
             };
 
-        // 0-63 (6) * 0-63 (6) * 0-8 (3) dynamic range is 15 bits.
-        // Shifted 7 puts the high bits into a u8.
-        #[inline]
-        fn calc_delay(bright: u8, disp: u8, tempbright: u16) -> u8 {
-            ((bright as u16)
-                .wrapping_mul(disp as u16)
-                .wrapping_mul(tempbright)
-                >> 7) as u8
-        }
+            if let ClockMode::SettingTime(setting_time) = mode {
+                f.hr_disp = 5;
+                f.min_disp = 5;
+                f.sec_disp = 5;
 
-        let hr_disp_delay = calc_delay(settings.hr_bright, fades.hr_disp, tempbright);
-        let hr_next_delay = calc_delay(settings.hr_bright, fades.hr_next, tempbright);
-        let min_disp_delay = calc_delay(settings.min_bright, fades.min_disp, tempbright);
-        let min_next_delay = calc_delay(settings.min_bright, fades.min_next, tempbright);
-        let sec_disp_delay = calc_delay(settings.sec_bright, fades.sec_disp, tempbright);
-        let sec_next_delay = calc_delay(settings.sec_bright, fades.sec_next, tempbright);
+                match setting_time {
+                    SettingTime::Hours => {
+                        f.hr_disp = TEMP_FADE;
+                    }
+                    SettingTime::Minutes => {
+                        f.min_disp = TEMP_FADE;
+                    }
+                    SettingTime::Seconds => {
+                        f.sec_disp = TEMP_FADE;
+                    }
+                }
+            } else if let ClockMode::Align(align_mode) = mode {
+                f.hr_disp = 0;
+                f.min_disp = 0;
+                f.sec_disp = 0;
 
-        // This is the loop where we actually light up the LEDs:
-        // 128 cycles: ROUGHLY 39 ms  => Full redraw at about 3 kHz.
-        for _ in 0..128 {
-            if hr_disp_delay > 0 {
-                HR_RING.activate(&mut leds, offsets.hr.disp, hr_disp_delay);
+                match align_mode {
+                    AlignMode::Hours(_) => {
+                        f.hr_disp = TEMP_FADE;
+                    }
+                    AlignMode::Minutes(_) => {
+                        f.min_disp = TEMP_FADE;
+                    }
+                    AlignMode::Seconds(_) => {
+                        f.sec_disp = TEMP_FADE;
+                    }
+                }
+            } else if let ClockMode::Option(option_mode) = mode {
+                f.hr_disp = 0;
+                f.min_disp = 0;
+                f.sec_disp = 0;
+                if starting_option < START_OPT_TIME_LIMIT {
+                    if option_mode == OptionMode::Red {
+                        f.hr_disp = TEMP_FADE;
+                    }
+                    if option_mode == OptionMode::Green {
+                        f.min_disp = TEMP_FADE;
+                    }
+                    if option_mode == OptionMode::Blue {
+                        f.sec_disp = TEMP_FADE;
+                    }
+                    if option_mode == OptionMode::CounterClockwise {
+                        f.sec_disp = TEMP_FADE;
+                        f.min_disp = TEMP_FADE;
+                    }
+                } else {
+                    f.hr_disp = TEMP_FADE;
+                    f.min_disp = TEMP_FADE;
+                    f.sec_disp = TEMP_FADE;
+
+                    if option_mode == OptionMode::CounterClockwise {
+                        f.hr_disp = 0;
+                    } else {
+                        f.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
+                    }
+                }
+            } else {
+                f.normal(time_delta_ms, settings.fade_mode, sec_now, min_now);
             }
+            f
+        };
 
-            if hr_next_delay > 0 {
-                HR_RING.activate(&mut leds, offsets.hr.next, hr_next_delay);
-            }
-
-            if min_disp_delay > 0 {
-                MIN_RING.activate(&mut leds, offsets.min.disp, min_disp_delay);
-            }
-
-            if min_next_delay > 0 {
-                MIN_RING.activate(&mut leds, offsets.min.next, min_next_delay);
-            }
-
-            if sec_disp_delay > 0 {
-                SEC_RING.activate(&mut leds, offsets.sec.disp, sec_disp_delay);
-            }
-
-            if sec_next_delay > 0 {
-                SEC_RING.activate(&mut leds, offsets.sec.next, sec_next_delay);
-            }
-
-            if settings.main_bright < 8 {
-                let dt = 8u8.wrapping_sub(settings.main_bright) << 5;
-                delay_time(dt);
-                delay_time(dt);
-                delay_time(dt);
-            }
-        }
+        // Update the LEDs with the ring state.
+        controller.render(&mut leds, &settings, &hr_ring, &min_ring, &sec_ring);
 
         // Can this sync be tried only once per second?
         #[cfg(feature = "serial-sync")]
