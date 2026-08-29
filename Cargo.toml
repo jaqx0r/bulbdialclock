@@ -24,7 +24,7 @@ embedded-hal = "1.0.0"
 
 [dependencies.arduino-hal]
 git = "https://github.com/Rahix/avr-hal"
-rev = "e5c8f37fe48419956e722490a82b9ca9b9fc61a2"
+rev = "e0b0105b11a7c4209fb1704276a7921c3139d5cb"
 features = ["nano168"]
 
 [dependencies.avr-device]
